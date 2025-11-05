@@ -24,11 +24,12 @@
     .drop-zone {margin-top:10px;border:2px dashed #334155;border-radius:10px;padding:20px;text-align:center;color:#94a3b8;background-color:#1e293b;cursor:pointer;}
     .drop-zone.dragover {background-color:#334155;color:#fff;}
   </style>
+  <!-- Supabase CDN (v2) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="sidebar">
     <h2>Menú</h2>
-    <div class="menu-item" data-section="conexion">Configuración de Conexión</div>
     <div class="menu-item" data-section="usuarios">Usuarios</div>
     <div class="menu-item" data-section="clientes">Configuración de Clientes</div>
     <div class="menu-item" data-section="cuentas">Configuración de Cuentas Contables</div>
@@ -181,11 +182,6 @@
     </section>
   </div>
 
-  <!-- NOTA: Para usar Supabase en producción, incluye @supabase/supabase-js antes del script principal
-       y crea window.supabaseClient = createClient(URL, ANON_KEY). Esta sección se dejó como comentario
-       *sin* etiquetas <script> para evitar problemas en entornos que incrustan el HTML vía document.write.
-  -->
-
   <script>
   // === Supabase access helpers ===
   // Guardamos TODA la tabla de cuentas contables en UNA sola fila
@@ -198,13 +194,27 @@
   //   );
 
   let supa = null;
+  // === HARDCODED SUPABASE CREDENTIALS ===
+  const SUPABASE_URL  = "https://veztzwgrblvdpuzdhtor.supabase.co";  // <-- replace con tu URL real
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlenR6d2dyYmx2ZHB1emRodG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMjY4MTcsImV4cCI6MjA3NzYwMjgxN30.2XaJ5YQQEZmihJF7zFEGv1QJ-z7RmAcPIHf4Hl1qnHk";                   // <-- replace con tu anon key real
+
   async function initSupabaseIfNeeded(){
     if (supa) return supa;
+
+    // 1) Si ya hay un cliente global, úsalo
     if (window.supabaseClient) {
       supa = window.supabaseClient;
       return supa;
     }
-    console.warn('Supabase SDK no detectado.');
+
+    // 2) Crear cliente con credenciales hardcodeadas
+    if (typeof window.supabase !== 'undefined'){
+      window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+      supa = window.supabaseClient;
+      return supa;
+    }
+
+    console.warn('Supabase SDK no detectado o falta configuración.');
     throw new Error('Supabase SDK no inicializado');
   }
 
@@ -635,6 +645,10 @@
         const res4 = parseTSV(tsv4);
         console.assert(res4.length === 1, 'parseTSV debe leer 1 fila (Col_O)');
         console.assert(res4[0]['Col_O'] === 'OVAL' && res4[0]['Factura'] === 'F001', 'Col_O correctamente mapeada y en orden');
+
+        // Tests de UI básicos
+        console.assert(document.getElementById('cuentasTable') instanceof HTMLTableElement, 'Tabla de cuentas existe');
+        console.assert(document.getElementById('contabTable') instanceof HTMLTableElement, 'Tabla de contabilización existe');
 
         console.assert(typeof initSupabaseIfNeeded === 'function', 'initSupabaseIfNeeded debe existir');
         console.assert(typeof saveCuentasToSupabase === 'function', 'saveCuentasToSupabase debe existir');
