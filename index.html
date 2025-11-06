@@ -262,6 +262,30 @@
     return { rows: Array.isArray(data.rows) ? data.rows : [], updated_at: data.updated_at || null };
   }
 
+    <script>
+// === Supabase helpers para CONFIGURACIÓN GENERAL ===
+async function saveGeneralToSupabase(data){
+  const client = await initSupabaseIfNeeded();
+  const nowIso = new Date().toISOString();
+  const payload = [{ id: 1, updated_at: nowIso, data }];
+  const { error } = await client.from('config_general').upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+  return { updated_at: nowIso };
+}
+
+async function loadGeneralFromSupabase(){
+  const client = await initSupabaseIfNeeded();
+  const { data, error } = await client
+    .from('config_general')
+    .select('data, updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  if (!data) return { data: null, updated_at: null };
+  return { data: data.data || null, updated_at: data.updated_at || null };
+}
+</script>
+
   // MAIN APP SCRIPT
   document.addEventListener('DOMContentLoaded', () => {
     // ======== CONSTANTES (evita TDZ) ========
@@ -349,6 +373,79 @@
         if (tsLabel) tsLabel.textContent = updated_at ? formatTimestamp(updated_at) : '(sin publicar)';
       } catch(e){ if (st) st.textContent = 'No se pudo cargar: ' + e.message; }
     }
+
+  // ======== CONFIGURACIÓN GENERAL ========
+const GENERAL_KEY = 'opera_zeus_config_general_v1';
+
+function sanitizeDigits(str){ return (str||'').replace(/\D+/g,''); }
+function sanitizeAlnum(str){ return (str||'').replace(/[^a-zA-Z0-9]+/g,''); }
+
+async function saveGeneralConfig(){
+  const st = document.getElementById('generalStatus');
+  const ts = document.getElementById('generalLastUpdated');
+
+  const cuentaH = sanitizeDigits(document.getElementById('inpCuentaHuespedes')?.value);
+  const codVend = sanitizeAlnum(document.getElementById('inpCodVendedor')?.value);
+  const cuentaC = sanitizeDigits(document.getElementById('inpCuentaPorCobrar')?.value);
+
+  const obj = {
+    cuenta_saldo_huespedes_en_casa: cuentaH || '',
+    codigo_vendedor_default: codVend || '',
+    cuenta_por_cobrar_default: cuentaC || ''
+  };
+
+  // Backup local
+  localStorage.setItem(GENERAL_KEY, JSON.stringify(obj));
+
+  try{
+    const res = await saveGeneralToSupabase(obj);
+    if (st) st.textContent = 'Guardado en Supabase';
+    if (ts && res?.updated_at) ts.textContent = formatTimestamp(res.updated_at);
+  }catch(e){
+    console.error('Error guardando Configuración General en Supabase:', e);
+    if (st) st.textContent = 'Guardado local. Supabase no está disponible.';
+  }
+}
+
+async function loadGeneralConfig(){
+  const st = document.getElementById('generalStatus');
+  const ts = document.getElementById('generalLastUpdated');
+  try{
+    let data = null, updated_at = null;
+    try{
+      const res = await loadGeneralFromSupabase();
+      data = res.data; updated_at = res.updated_at;
+    }catch(_e){
+      const raw = localStorage.getItem(GENERAL_KEY);
+      data = raw ? JSON.parse(raw) : null;
+    }
+
+    if (data){
+      const inpH = document.getElementById('inpCuentaHuespedes');
+      const inpV = document.getElementById('inpCodVendedor');
+      const inpC = document.getElementById('inpCuentaPorCobrar');
+      if (inpH) inpH.value = sanitizeDigits(data.cuenta_saldo_huespedes_en_casa || '');
+      if (inpV) inpV.value = sanitizeAlnum(data.codigo_vendedor_default || '');
+      if (inpC) inpC.value = sanitizeDigits(data.cuenta_por_cobrar_default || '');
+      if (st) st.textContent = 'Configuración cargada';
+      if (ts) ts.textContent = updated_at ? formatTimestamp(updated_at) : '(sin publicar)';
+    } else {
+      if (st) st.textContent = '';
+      if (ts) ts.textContent = '(sin publicar)';
+    }
+  }catch(e){ if (st) st.textContent = 'No se pudo cargar: ' + e.message; }
+}
+
+function initGeneralPage(){
+  const h = document.getElementById('inpCuentaHuespedes');
+  const v = document.getElementById('inpCodVendedor');
+  const c = document.getElementById('inpCuentaPorCobrar');
+  if (h && !h._bound){ h.addEventListener('input', () => { h.value = sanitizeDigits(h.value); }); h._bound = true; }
+  if (v && !v._bound){ v.addEventListener('input', () => { v.value = sanitizeAlnum(v.value); }); v._bound = true; }
+  if (c && !c._bound){ c.addEventListener('input', () => { c.value = sanitizeDigits(c.value); }); c._bound = true; }
+  const btn = document.getElementById('generalSave');
+  if (btn && !btn._bound){ btn.addEventListener('click', saveGeneralConfig); btn._bound = true; }
+}
 
     // ======== ARTÍCULOS ========
     function getArticulosTableData(){
@@ -611,6 +708,7 @@
     function showSection(id){
       document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden')); // Oculta todo
       const el = document.getElementById(id); if (el) el.classList.remove('hidden');    // Muestra
+      if (id === 'configgeneral')  { initGeneralPage(); loadGeneralConfig(); }
       if (id === 'cuentas')          loadCuentasConfig();
       if (id === 'articulos')        loadArticulosConfig();
       if (id === 'ventas')           initVentasPage();
@@ -703,6 +801,11 @@
         // Nuevos helpers de artículos
         console.assert(typeof saveArticulosToSupabase === 'function', 'saveArticulosToSupabase debe existir');
         console.assert(typeof loadArticulosFromSupabase === 'function', 'loadArticulosFromSupabase debe existir');
+
+      console.assert(typeof saveGeneralToSupabase === 'function', 'saveGeneralToSupabase debe existir');
+      console.assert(typeof loadGeneralFromSupabase === 'function', 'loadGeneralFromSupabase debe existir');
+      console.assert(sanitizeDigits('A1B2C3') === '123', 'sanitizeDigits');
+      console.assert(sanitizeAlnum('A-1_B 2!') === 'A1B2', 'sanitizeAlnum');
 
         // Extra: smoke test de invocación segura (no debe lanzar)
         (async ()=>{ try { const r = await saveArticulosConfig(); console.assert(r === false, 'saveArticulosConfig vacío debe retornar false y no upsert'); } catch (e) { console.error('saveArticulosConfig lanzó excepción inesperada', e); } })();
