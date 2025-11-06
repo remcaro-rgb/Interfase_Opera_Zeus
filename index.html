@@ -358,15 +358,24 @@
       const status = document.getElementById('articulosStatus');
       try{
         const rows = getArticulosTableData();
+        // Evita borrar datos remotos: si no hay filas válidas, no escribas en Supabase
+        if (!rows || rows.length === 0){
+          // Mantén backup local, pero NO sobrescribas remoto con []
+          localStorage.setItem(ARTICULOS_KEY, JSON.stringify([]));
+          if (status) status.textContent = 'No hay filas para guardar. Se mantiene el contenido de Supabase sin cambios.';
+          return false;
+        }
         // backup local siempre
         localStorage.setItem(ARTICULOS_KEY, JSON.stringify(rows));
         // intenta Supabase
         const res = await saveArticulosToSupabase(rows);
         if (status) status.textContent = 'Guardado en Supabase ('+ rows.length +' fila(s))' + (res?.updated_at ? ' • '+formatTimestamp(res.updated_at) : '');
+        return true;
       }catch(e){
         console.error('Error guardando artículos en Supabase:', e);
         const rows = getArticulosTableData();
         if (status) status.textContent = 'Guardado local ('+ rows.length +' fila(s)). Supabase no está disponible.';
+        return false;
       }
     }
 
@@ -668,7 +677,7 @@
         console.assert(typeof loadArticulosFromSupabase === 'function', 'loadArticulosFromSupabase debe existir');
 
         // Extra: smoke test de invocación segura (no debe lanzar)
-        try { saveArticulosConfig(); } catch (e) { console.error('saveArticulosConfig lanzó excepción inesperada', e); }
+        (async ()=>{ try { const r = await saveArticulosConfig(); console.assert(r === false, 'saveArticulosConfig vacío debe retornar false y no upsert'); } catch (e) { console.error('saveArticulosConfig lanzó excepción inesperada', e); } })();
 
         console.log('%cSmoke tests OK','color:#22c55e');
       } catch (e) { console.error('Smoke tests FAILED', e); }
