@@ -262,6 +262,28 @@
     return { rows: Array.isArray(data.rows) ? data.rows : [], updated_at: data.updated_at || null };
   }
 
+  // === Supabase helpers para CONFIGURACIÓN GENERAL ===
+async function saveGeneralToSupabase(data){
+  const client = await initSupabaseIfNeeded();
+  const nowIso = new Date().toISOString();
+  const payload = [{ id: 1, updated_at: nowIso, data }];
+  const { error } = await client.from('config_general').upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+  return { updated_at: nowIso };
+}
+
+async function loadGeneralFromSupabase(){
+  const client = await initSupabaseIfNeeded();
+  const { data, error } = await client
+    .from('config_general')
+    .select('data, updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  if (!data) return { data: null, updated_at: null };
+  return { data: data.data || null, updated_at: data.updated_at || null };
+}
+    
   // MAIN APP SCRIPT
   document.addEventListener('DOMContentLoaded', () => {
     // ======== CONSTANTES (evita TDZ) ========
