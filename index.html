@@ -43,6 +43,33 @@
   <div class="content">
     <h1>Interfaz Opera - Zeus v1.0</h1>
 
+    <!-- Configuración General -->
+<section id="configgeneral" class="card hidden">
+  <h2>Configuración General</h2>
+
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:12px;align-items:center;">
+    <label for="inpCuentaHuespedes" style="color:#94a3b8;">Cuenta Saldo Huéspedes en Casa</label>
+    <input id="inpCuentaHuespedes" type="text" inputmode="numeric" placeholder="Sólo números" />
+
+    <label for="inpCodVendedor" style="color:#94a3b8;">Código de vendedor por defecto para clientes</label>
+    <input id="inpCodVendedor" type="text" placeholder="Alfanumérico" />
+
+    <label for="inpCuentaPorCobrar" style="color:#94a3b8;">Cuenta por cobrar por defecto para clientes</label>
+    <input id="inpCuentaPorCobrar" type="text" inputmode="numeric" placeholder="Sólo números" />
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+    <button id="generalSave" type="button">Guardar</button>
+    <span id="generalStatus" style="margin-left:6px;color:#94a3b8"></span>
+  </div>
+
+  <div style="margin-top:6px;color:#94a3b8;font-size:12px;line-height:1.4;">
+    <strong>Última actualización:</strong>
+    <span id="generalLastUpdated">(sin publicar)</span>
+  </div>
+</section>
+
+
     <!-- Cuentas Contables -->
     <section id="cuentas" class="card hidden">
       <h2>Configuración de Cuentas Contables</h2>
