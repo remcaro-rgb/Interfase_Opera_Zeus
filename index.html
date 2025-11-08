@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.06</h1>
+    <h1>Interfaz Opera - Zeus v1.07</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -286,7 +286,7 @@ async function loadGeneralFromSupabase(){
   return { data: data.data || null, updated_at: data.updated_at || null };
 }
 
-    function parseToNumber(val){
+function parseToNumber(val){
   let s = (val ?? '').toString().trim();
   if (!s) return 0;
   s = s.replace(/[^0-9,.-]/g, '');
@@ -307,12 +307,42 @@ async function loadGeneralFromSupabase(){
   return Number.isFinite(n) ? n : 0;
 }
 
-function formatMoney(n){
-  const x = parseFloat(n);
+function formatMoneyUSD(n){
+  const x = Number(n);
   return Number.isFinite(x)
     ? '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '$0.00';
 }
+
+// Normalize keys to compare reliably
+function normKey(s){
+  return (s ?? '')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // strip accents
+    .trim().toLowerCase()
+    .replace(/\s+/g,'_')
+    .replace(/[^a-z0-9_]/g,'');
+}
+
+// Try to read row[col] with fallbacks / aliases
+function getRowValue(row, col){
+  if (!row) return '';
+  if (col in row) return row[col] ?? '';
+  const nkCol = normKey(col);
+  // exact normalized match
+  for (const k of Object.keys(row)){
+    if (normKey(k) === nkCol) return row[k] ?? '';
+  }
+  // aliases for Monto_Cargo
+  if (nkCol === 'monto_cargo'){
+    const aliases = new Set(['monto_cargo','monto','monto_de_cargo','amount','monto_carg']);
+    for (const k of Object.keys(row)){
+      if (aliases.has(normKey(k))) return row[k] ?? '';
+    }
+  }
+  return '';
+}
+
 
 
     
@@ -573,35 +603,36 @@ function renderContabTable(rows){
   const tbody = document.getElementById('contabBody');
   if (!thead || !tbody) return;
 
-  thead.innerHTML = '';
+  // Always render the fixed header from CONTAB_COLS
+  thead.innerHTML = '<tr>' + CONTAB_COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
   tbody.innerHTML = '';
 
   if (!rows || !rows.length){
-    thead.innerHTML = '<tr><th>Sin datos</th></tr>';
+    // keep header visible even with no rows
     return;
   }
-
-  // usa tu orden fijo de columnas CONTAB_COLS
-  thead.innerHTML = '<tr>' + CONTAB_COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
 
   const frag = document.createDocumentFragment();
   rows.forEach(row => {
     const tr = document.createElement('tr');
     CONTAB_COLS.forEach(col => {
       const td = document.createElement('td');
+      let val = getRowValue(row, col);
 
-      if (col === 'Monto_Cargo') {
-        td.textContent = formatMoney(parseToNumber(row[col]));
+      if (normKey(col) === 'monto_cargo'){
+        td.textContent = formatMoneyUSD(parseToNumber(val));
       } else {
-        td.textContent = row[col] ?? '';
+        td.textContent = val ?? '';
       }
 
       tr.appendChild(td);
     });
     frag.appendChild(tr);
   });
+
   tbody.appendChild(frag);
 }
+
 
 
     function initContabilizacionPage(){
