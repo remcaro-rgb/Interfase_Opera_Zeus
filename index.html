@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.02</h1>
+    <h1>Interfaz Opera - Zeus v1.03</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -803,6 +803,12 @@ function initGeneralPage(){
         console.assert(typeof saveArticulosToSupabase === 'function', 'saveArticulosToSupabase debe existir');
         console.assert(typeof loadArticulosFromSupabase === 'function', 'loadArticulosFromSupabase debe existir');
 
+        console.assert(typeof saveGeneralToSupabase === 'function', 'saveGeneralToSupabase debe existir');
+        console.assert(typeof loadGeneralFromSupabase === 'function', 'loadGeneralFromSupabase debe existir');
+        console.assert(sanitizeDigits('A1B2C3') === '123', 'sanitizeDigits');
+        console.assert(sanitizeAlnum('A-1_B 2!') === 'A1B2', 'sanitizeAlnum');
+
+        
         // Extra: smoke test de invocación segura (no debe lanzar)
         (async ()=>{ try { const r = await saveArticulosConfig(); console.assert(r === false, 'saveArticulosConfig vacío debe retornar false y no upsert'); } catch (e) { console.error('saveArticulosConfig lanzó excepción inesperada', e); } })();
 
