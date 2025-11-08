@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.07</h1>
+    <h1>Interfaz Opera - Zeus v1.08</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -290,16 +290,14 @@ function parseToNumber(val){
   let s = (val ?? '').toString().trim();
   if (!s) return 0;
   s = s.replace(/[^0-9,.-]/g, '');
-  const hasComma = s.includes(',');
-  const hasDot = s.includes('.');
+  const hasComma = s.includes(','), hasDot = s.includes('.');
   if (hasComma && hasDot){
     const decPos = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
     const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
     const decPart = s.slice(decPos+1).replace(/[.,]/g, '');
     s = intPart + '.' + decPart;
   } else if (hasComma && !hasDot){
-    s = s.replace(/\./g, '');
-    s = s.replace(',', '.');
+    s = s.replace(/\./g, '').replace(',', '.');
   } else {
     s = s.replace(/,/g, '');
   }
@@ -360,9 +358,13 @@ function getRowValue(row, col){
     ];
 
     // Columnas esperadas del archivo de Contabilización (tab separado)
-    const CONTAB_COLS = [
-      'Fecha','Codigo_Cargo_Opera','Nombre_Cargo_Opera','','Nombre_Cliente','ID_Cliente','Telefono_Cliente','Direccion_Cliente','email_Cliente','Ciudad_Cliente','Pais_Cliente','Col_M','Col_N','Col_O','Factura','Col_P','Col_Q','Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
-    ];
+const CONTAB_COLS = [
+  'Fecha','Codigo_Cargo_Opera','Nombre_Cargo_Opera','Monto_Cargo','Nombre_Cliente','ID_Cliente',
+  'Telefono_Cliente','Direccion_Cliente','email_Cliente','Ciudad_Cliente','Pais_Cliente',
+  'Col_M','Col_N','Col_O','Factura','Col_P','Col_Q',
+  'Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
+];
+
 
     // memoria en runtime para las filas cargadas de Contabilización
     let contabRows = [];
@@ -603,35 +605,42 @@ function renderContabTable(rows){
   const tbody = document.getElementById('contabBody');
   if (!thead || !tbody) return;
 
-  // Always render the fixed header from CONTAB_COLS
-  thead.innerHTML = '<tr>' + CONTAB_COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
+  // Clear
+  thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  if (!rows || !rows.length){
-    // keep header visible even with no rows
-    return;
-  }
+  // Header (DOM, no innerHTML)
+  const trHead = document.createElement('tr');
+  CONTAB_COLS.forEach(label => {
+    const th = document.createElement('th');
+    th.textContent = label;          // <= ensures "Monto_Cargo" always visible
+    th.style.whiteSpace = 'nowrap';  // keep header readable
+    trHead.appendChild(th);
+  });
+  thead.appendChild(trHead);
+
+  // Body
+  if (!rows || !rows.length) return;
 
   const frag = document.createDocumentFragment();
   rows.forEach(row => {
     const tr = document.createElement('tr');
     CONTAB_COLS.forEach(col => {
       const td = document.createElement('td');
-      let val = getRowValue(row, col);
+      const raw = (col in row) ? row[col] : '';
 
-      if (normKey(col) === 'monto_cargo'){
-        td.textContent = formatMoneyUSD(parseToNumber(val));
+      if (col === 'Monto_Cargo') {
+        td.textContent = formatMoneyUSD(parseToNumber(raw));
       } else {
-        td.textContent = val ?? '';
+        td.textContent = raw ?? '';
       }
-
       tr.appendChild(td);
     });
     frag.appendChild(tr);
   });
-
   tbody.appendChild(frag);
 }
+
 
 
 
