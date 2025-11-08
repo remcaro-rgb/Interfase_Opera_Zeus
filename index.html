@@ -624,34 +624,66 @@ function downloadText(filename, content){
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
 }
 
-function normalizeStr(s){
-  return (s||'').toString().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+// ======== TERCEROS (helpers y generador de filas) ========
+// Normaliza nombres de país (quita acentos, colapsa espacios, a minúsculas)
+function normalizeStrForCountry(s){
+  return (s||'').toString().trim().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
 }
 
-function safeField(v){
-  return (v||'').toString().trim().replace(/;/g, ' ');
+// ISO 3166-1 alpha-2 (en / es comunes). Si ya viene en 2 letras, respeta.
+function toISO2Country(name){
+  if (!name) return '';
+  const raw = name.toString().trim();
+  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase();
+  const key = normalizeStrForCountry(raw);
+  const m = {"afghanistan":"AF","albania":"AL","algeria":"DZ","andorra":"AD","angola":"AO","antigua and barbuda":"AG",
+"argentina":"AR","armenia":"AM","australia":"AU","austria":"AT","azerbaijan":"AZ","bahamas":"BS","bahrain":"BH","bangladesh":"BD","barbados":"BB","belarus":"BY","belgium":"BE","belize":"BZ",
+"benin":"BJ","bhutan":"BT","bolivia":"BO","bosnia and herzegovina":"BA","botswana":"BW","brazil":"BR","brunei":"BN","bulgaria":"BG","burkina faso":"BF","burundi":"BI","cabo verde":"CV","cambodia":"KH","cameroon":"CM",
+"canada":"CA","central african republic":"CF","chad":"TD","chile":"CL","china":"CN","colombia":"CO","comoros":"KM","congo":"CG","costa rica":"CR","croatia":"HR","cuba":"CU","cyprus":"CY","czech republic":"CZ","czechia":"CZ",
+"denmark":"DK","djibouti":"DJ","dominica":"DM","dominican republic":"DO","republica dominicana":"DO","república dominicana":"DO","ecuador":"EC","egypt":"EG","el salvador":"SV","equatorial guinea":"GQ","eritrea":"ER","estonia":"EE",
+"eswatini":"SZ","ethiopia":"ET","fiji":"FJ","finland":"FI","france":"FR","gabon":"GA","gambia":"GM","georgia":"GE","germany":"DE","ghana":"GH","greece":"GR","grenada":"GD","guatemala":"GT","guinea":"GN","guinea-bissau":"GW","guyana":"GY",
+"haiti":"HT","honduras":"HN","hungary":"HU","iceland":"IS","india":"IN","indonesia":"ID","iran":"IR","iraq":"IQ","ireland":"IE","israel":"IL","italy":"IT","jamaica":"JM","japan":"JP","japon":"JP","japón":"JP","jordan":"JO",
+"kazakhstan":"KZ","kenya":"KE","kiribati":"KI","kosovo":"XK","kuwait":"KW","kyrgyzstan":"KG","laos":"LA","latvia":"LV","lebanon":"LB","lesotho":"LS","liberia":"LR","libya":"LY","liechtenstein":"LI","lithuania":"LT","luxembourg":"LU",
+"madagascar":"MG","malawi":"MW","malaysia":"MY","maldives":"MV","mali":"ML","malta":"MT","marshall islands":"MH","mauritania":"MR","mauritius":"MU","mexico":"MX","méxico":"MX","micronesia":"FM","moldova":"MD","monaco":"MC","mongolia":"MN","montenegro":"ME","morocco":"MA","mozambique":"MZ",
+"myanmar":"MM","namibia":"NA","nauru":"NR","nepal":"NP","netherlands":"NL","new zealand":"NZ","nicaragua":"NI","niger":"NE","nigeria":"NG","north korea":"KP","north macedonia":"MK","norway":"NO",
+"oman":"OM","pakistan":"PK","palau":"PW","panama":"PA","panamá":"PA","papua new guinea":"PG","paraguay":"PY","peru":"PE","perú":"PE","philippines":"PH","poland":"PL","portugal":"PT","qatar":"QA","romania":"RO","russia":"RU","russian federation":"RU","rwanda":"RW",
+"saint kitts and nevis":"KN","saint lucia":"LC","saint vincent and the grenadines":"VC","samoa":"WS","san marino":"SM","sao tome and principe":"ST","saudi arabia":"SA","senegal":"SN","serbia":"RS","seychelles":"SC","sierra leone":"SL","singapore":"SG","slovakia":"SK","slovenia":"SI","solomon islands":"SB","somalia":"SO","south africa":"ZA","south korea":"KR","korea":"KR","south sudan":"SS","spain":"ES","españa":"ES","sri lanka":"LK","sudan":"SD","suriname":"SR","sweden":"SE","switzerland":"CH","syria":"SY",
+"taiwan":"TW","tajikistan":"TJ","tanzania":"TZ","thailand":"TH","timor-leste":"TL","togo":"TG","tonga":"TO","trinidad and tobago":"TT","tunisia":"TN","turkey":"TR","turkiye":"TR","turkmenistan":"TM","tuvalu":"TV",
+"uganda":"UG","ukraine":"UA","united arab emirates":"AE","uae":"AE","united kingdom":"GB","reino unido":"GB","uk":"GB","united states":"US","estados unidos":"US","usa":"US","uruguay":"UY","uzbekistan":"UZ",
+"vanuatu":"VU","vatican city":"VA","venezuela":"VE","vietnam":"VN","yemen":"YE","zambia":"ZM","zimbabwe":"ZW"};
+  return m[key] || '';
 }
 
-// Construye las filas para Terceros_Zeus.txt (semicolon ; separated)
+// Limpia ; y trim
+function safeField(v){ return (v||'').toString().trim().replace(/;/g,' '); }
+
+// ✅ Construye filas para Terceros_Zeus.txt **sin duplicados**
+//   - Filtra filas con Tipo_Documento_Cliente no vacío
+//   - Duplicado = mismo (ID_Cliente, Nombre_Cliente) tras trim/lower
 function buildTercerosRows(rows){
-  // Filtra por Tipo_Documento_Cliente no vacío
   const filtered = (rows||[]).filter(r => (r['Tipo_Documento_Cliente']||'').toString().trim() !== '');
+  const seen = new Set();
   const out = [];
   for (const r of filtered){
     const id = safeField(r['ID_Cliente']);
     const name = safeField(r['Nombre_Cliente']);
+    if (!id || !name) continue; // ignora filas sin clave
+    const key = id + '||' + name.toLowerCase();
+    if (seen.has(key)) continue; // 🔁 elimina duplicados
+    seen.add(key);
+
     const tipoDoc = (r['Tipo_Documento_Cliente']||'').toString().trim();
     const direccion = safeField(r['Direccion_Cliente']);
     const ciudad = safeField(r['Ciudad_Cliente']);
     const tel = safeField(r['Telefono_Cliente']);
     const pais = safeField(r['Pais_Cliente']);
 
-    const jn = (tipoDoc === '11') ? 'J' : 'N'; // 11 => Jurídica “J” ; else Natural “N”
-    let docType;
+    const jn = (tipoDoc === '11') ? 'J' : 'N';
+    let docType = '';
     if (tipoDoc === '13') docType = 'CC';
     else if (tipoDoc === '41') docType = 'PAP';
     else if (tipoDoc === '11') docType = 'NIT';
-    else docType = '';
 
     const iso = toISO2Country(pais);
 
@@ -680,57 +712,6 @@ function buildTercerosRows(rows){
   return out;
 }
 
-    // =======================
-// ✅ ISO 3166-1 alpha-2 Mapping (ALL countries)
-// =======================
-function toISO2Country(name){
-  if (!name) return '';
-  const raw = name.toString().trim();
-  if (/^[A-Za-z]{2}$/.test(raw)) return raw.toUpperCase(); // already ISO-2
-
-  const key = raw
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-
-  const m = {
-    "afghanistan":"AF","albania":"AL","algeria":"DZ","andorra":"AD","angola":"AO","antigua and barbuda":"AG",
-    "argentina":"AR","armenia":"AM","australia":"AU","austria":"AT","azerbaijan":"AZ",
-    "bahamas":"BS","bahrain":"BH","bangladesh":"BD","barbados":"BB","belarus":"BY","belgium":"BE","belize":"BZ",
-    "benin":"BJ","bhutan":"BT","bolivia":"BO","bosnia and herzegovina":"BA","botswana":"BW","brazil":"BR","brunei":"BN",
-    "bulgaria":"BG","burkina faso":"BF","burundi":"BI","cabo verde":"CV","cambodia":"KH","cameroon":"CM",
-    "canada":"CA","central african republic":"CF","chad":"TD","chile":"CL","china":"CN","colombia":"CO","comoros":"KM",
-    "congo":"CG","costa rica":"CR","croatia":"HR","cuba":"CU","cyprus":"CY","czech republic":"CZ","czechia":"CZ",
-    "denmark":"DK","djibouti":"DJ","dominica":"DM","dominican republic":"DO","republica dominicana":"DO",
-    "ecuador":"EC","egypt":"EG","el salvador":"SV","equatorial guinea":"GQ","eritrea":"ER","estonia":"EE",
-    "eswatini":"SZ","ethiopia":"ET","fiji":"FJ","finland":"FI","france":"FR","gabon":"GA","gambia":"GM","georgia":"GE",
-    "germany":"DE","ghana":"GH","greece":"GR","grenada":"GD","guatemala":"GT","guinea":"GN","guinea-bissau":"GW","guyana":"GY",
-    "haiti":"HT","honduras":"HN","hungary":"HU","iceland":"IS","india":"IN","indonesia":"ID","iran":"IR","iraq":"IQ",
-    "ireland":"IE","israel":"IL","italy":"IT","jamaica":"JM","japan":"JP","japon":"JP","japón":"JP","jordan":"JO",
-    "kazakhstan":"KZ","kenya":"KE","kiribati":"KI","kosovo":"XK","kuwait":"KW","kyrgyzstan":"KG",
-    "laos":"LA","latvia":"LV","lebanon":"LB","lesotho":"LS","liberia":"LR","libya":"LY","liechtenstein":"LI",
-    "lithuania":"LT","luxembourg":"LU","madagascar":"MG","malawi":"MW","malaysia":"MY","maldives":"MV","mali":"ML",
-    "malta":"MT","marshall islands":"MH","mauritania":"MR","mauritius":"MU","mexico":"MX","méxico":"MX","micronesia":"FM",
-    "moldova":"MD","monaco":"MC","mongolia":"MN","montenegro":"ME","morocco":"MA","mozambique":"MZ","myanmar":"MM",
-    "namibia":"NA","nauru":"NR","nepal":"NP","netherlands":"NL","netherlands kingdom":"NL","new zealand":"NZ",
-    "nicaragua":"NI","niger":"NE","nigeria":"NG","north korea":"KP","north macedonia":"MK","norway":"NO",
-    "oman":"OM","pakistan":"PK","palau":"PW","panama":"PA","papua new guinea":"PG","paraguay":"PY","peru":"PE","perú":"PE",
-    "philippines":"PH","poland":"PL","portugal":"PT","qatar":"QA","romania":"RO","russia":"RU","russian federation":"RU",
-    "rwanda":"RW","saint kitts and nevis":"KN","saint lucia":"LC","saint vincent and the grenadines":"VC","samoa":"WS",
-    "san marino":"SM","sao tome and principe":"ST","saudi arabia":"SA","senegal":"SN","serbia":"RS","seychelles":"SC",
-    "sierra leone":"SL","singapore":"SG","slovakia":"SK","slovenia":"SI","solomon islands":"SB","somalia":"SO",
-    "south africa":"ZA","south korea":"KR","korea":"KR","south sudan":"SS","spain":"ES","españa":"ES",
-    "sri lanka":"LK","sudan":"SD","suriname":"SR","sweden":"SE","switzerland":"CH","syria":"SY",
-    "taiwan":"TW","tajikistan":"TJ","tanzania":"TZ","thailand":"TH","timor-leste":"TL","togo":"TG","tonga":"TO",
-    "trinidad and tobago":"TT","tunisia":"TN","turkey":"TR","turkiye":"TR","turkmenistan":"TM","tuvalu":"TV",
-    "uganda":"UG","ukraine":"UA","united arab emirates":"AE","uae":"AE","united kingdom":"GB","reino unido":"GB",
-    "united states":"US","estados unidos":"US","usa":"US","uruguay":"UY","uzbekistan":"UZ","vanuatu":"VU",
-    "vatican city":"VA","venezuela":"VE","vietnam":"VN","yemen":"YE","zambia":"ZM","zimbabwe":"ZW"
-  };
-
-  return m[key] || '';
-}
 
     
     // ======== PARSER XML (Ventas) ========
