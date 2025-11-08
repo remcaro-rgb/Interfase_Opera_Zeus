@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.05</h1>
+    <h1>Interfaz Opera - Zeus v1.06</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -285,6 +285,36 @@ async function loadGeneralFromSupabase(){
   if (!data) return { data: null, updated_at: null };
   return { data: data.data || null, updated_at: data.updated_at || null };
 }
+
+    function parseToNumber(val){
+  let s = (val ?? '').toString().trim();
+  if (!s) return 0;
+  s = s.replace(/[^0-9,.-]/g, '');
+  const hasComma = s.includes(',');
+  const hasDot = s.includes('.');
+  if (hasComma && hasDot){
+    const decPos = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+    const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
+    const decPart = s.slice(decPos+1).replace(/[.,]/g, '');
+    s = intPart + '.' + decPart;
+  } else if (hasComma && !hasDot){
+    s = s.replace(/\./g, '');
+    s = s.replace(',', '.');
+  } else {
+    s = s.replace(/,/g, '');
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoney(n){
+  const x = parseFloat(n);
+  return Number.isFinite(x)
+    ? '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '$0.00';
+}
+
+
     
   // MAIN APP SCRIPT
   document.addEventListener('DOMContentLoaded', () => {
@@ -301,7 +331,7 @@ async function loadGeneralFromSupabase(){
 
     // Columnas esperadas del archivo de Contabilización (tab separado)
     const CONTAB_COLS = [
-      'Fecha','Codigo_Cargo_Opera','Nombre_Cargo_Opera','Monto_Cargo','Nombre_Cliente','ID_Cliente','Telefono_Cliente','Direccion_Cliente','email_Cliente','Ciudad_Cliente','Pais_Cliente','Col_M','Col_N','Col_O','Factura','Col_P','Col_Q','Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
+      'Fecha','Codigo_Cargo_Opera','Nombre_Cargo_Opera','','Nombre_Cliente','ID_Cliente','Telefono_Cliente','Direccion_Cliente','email_Cliente','Ciudad_Cliente','Pais_Cliente','Col_M','Col_N','Col_O','Factura','Col_P','Col_Q','Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
     ];
 
     // memoria en runtime para las filas cargadas de Contabilización
@@ -538,22 +568,41 @@ function initGeneralPage(){
       return parsed;
     }
 
-    function renderContabTable(rows){
-      const thead = document.getElementById('contabHead');
-      const tbody = document.getElementById('contabBody');
-      if (!thead || !tbody) return;
-      thead.innerHTML = '';
-      tbody.innerHTML = '';
-      if (!rows || !rows.length){ thead.innerHTML = '<tr><th>Sin datos</th></tr>'; return; }
-      thead.innerHTML = '<tr>' + CONTAB_COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
-      const frag = document.createDocumentFragment();
-      rows.forEach(r => {
-        const tr = document.createElement('tr');
-        CONTAB_COLS.forEach(c => { const td = document.createElement('td'); td.textContent = r[c] ?? ''; tr.appendChild(td); });
-        frag.appendChild(tr);
-      });
-      tbody.appendChild(frag);
-    }
+function renderContabTable(rows){
+  const thead = document.getElementById('contabHead');
+  const tbody = document.getElementById('contabBody');
+  if (!thead || !tbody) return;
+
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  if (!rows || !rows.length){
+    thead.innerHTML = '<tr><th>Sin datos</th></tr>';
+    return;
+  }
+
+  // usa tu orden fijo de columnas CONTAB_COLS
+  thead.innerHTML = '<tr>' + CONTAB_COLS.map(c => `<th>${c}</th>`).join('') + '</tr>';
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    CONTAB_COLS.forEach(col => {
+      const td = document.createElement('td');
+
+      if (col === 'Monto_Cargo') {
+        td.textContent = formatMoney(parseToNumber(row[col]));
+      } else {
+        td.textContent = row[col] ?? '';
+      }
+
+      tr.appendChild(td);
+    });
+    frag.appendChild(tr);
+  });
+  tbody.appendChild(frag);
+}
+
 
     function initContabilizacionPage(){
       const fileInput = document.getElementById('contabFile');
