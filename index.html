@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.09</h1>
+    <h1>Interfaz Opera - Zeus v1.10</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -961,8 +961,10 @@ function buildTercerosRows(rows){
     });
 
     // ======== INICIALIZACIÓN POR DEFECTO ========
-    showSection('cuentas');
-    document.querySelector('.menu-item[data-section="cuentas"]').classList.add('active');
+    // Open "Contabilización" by default
+    showSection('contabilizacion');
+    document.querySelector('.menu-item[data-section="contabilizacion"]')?.classList.add('active');
+
 
     // ======== TESTS ========
     (function runSmokeTests(){
