@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.11</h1>
+    <h1>Interfaz Opera - Zeus v1.12</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -701,6 +701,19 @@ function renderContabTable(rows){
       const status    = document.getElementById('contabStatus');
       const genBtn    = document.getElementById('contabGenerate');
 
+      const genTerBtn = document.getElementById('contabGenerateTerceros');
+      if (genTerBtn && !genTerBtn._bound){
+        genTerBtn.addEventListener('click', () => {
+          const st = document.getElementById('contabStatus');
+          const rows = buildTercerosRows(contabRows);
+          if (!rows.length){ if (st) st.textContent = 'No hay filas con Tipo_Documento_Cliente.'; return; }
+          const content = rows.map(r => r.join(';')).join('\n');
+          downloadText('Terceros_Zeus.txt', content);
+          if (st) st.textContent = 'Generado Terceros_Zeus.txt ('+rows.length+' fila(s))';
+        });
+        genTerBtn._bound = true;
+      }
+         
       async function handleFile(file){
         if (!file) return;
         try {
@@ -909,6 +922,11 @@ function downloadText(filename, content){
   a.href = url; a.download = filename; a.style.display = 'none';
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+
+    
+function normalizeStr(s){
+  return (s||'').toString().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
 
 // ======== TERCEROS (helpers y generador de filas) ========
