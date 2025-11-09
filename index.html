@@ -44,7 +44,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.09</h1>
+    <h1>Interfaz Opera - Zeus v1.10</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -408,7 +408,9 @@ function yyyymmddToNum(s){
   return Number(t);
 }
 
-    
+// Never crash the whole app if one feature fails
+function safe(fn){ try { return fn(); } catch(e){ console.error('[SAFE]', e); } }
+
   // MAIN APP SCRIPT
   document.addEventListener('DOMContentLoaded', () => {
     // ======== CONSTANTES (evita TDZ) ========
@@ -673,7 +675,66 @@ function renderContabTable(rows){
   const tbody = document.getElementById('contabBody');
   if (!thead || !tbody) return;
 
-  function applyFilters(){
+  // Fallback columns if CONTAB_COLS is missing
+  const cols = Array.isArray(window.CONTAB_COLS) && window.CONTAB_COLS.length
+    ? window.CONTAB_COLS
+    : ['Fecha','Codigo_Cargo_Opera','Nombre_Cargo_Opera','Monto_Cargo'];
+
+  // Clear
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  // Header (DOM API to avoid weird disappearing text)
+  const trHead = document.createElement('tr');
+  cols.forEach(label => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    th.style.whiteSpace = 'nowrap';
+    trHead.appendChild(th);
+  });
+  thead.appendChild(trHead);
+
+  if (!rows || !rows.length){
+    // keep header visible
+    return safe(() => {
+      if (typeof enableHeaderSorting === 'function') enableHeaderSorting();
+      if (typeof paintSortIndicators === 'function') paintSortIndicators();
+    });
+  }
+
+  const frag = document.createDocumentFragment();
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    cols.forEach(col => {
+      const td = document.createElement('td');
+      let raw = (col in row) ? row[col] : (row[col?.trim()] ?? '');
+
+      if (col === 'Monto_Cargo') {
+        // tolerate helpers not being present
+        if (typeof parseToNumber === 'function' && typeof formatMoneyUSD === 'function') {
+          td.textContent = formatMoneyUSD(parseToNumber(raw));
+        } else {
+          td.textContent = raw ?? '';
+        }
+      } else {
+        td.textContent = raw ?? '';
+      }
+      tr.appendChild(td);
+    });
+    frag.appendChild(tr);
+  });
+
+  tbody.appendChild(frag);
+
+  // Sorting decorations guarded
+  safe(() => {
+    if (typeof enableHeaderSorting === 'function') enableHeaderSorting();
+    if (typeof paintSortIndicators === 'function') paintSortIndicators();
+  });
+}
+
+
+ function applyFilters(){
   // Lee filtros
   const df = document.getElementById('contabDateFrom')?.value.trim();
   const dt = document.getElementById('contabDateTo')?.value.trim();
@@ -730,7 +791,8 @@ function renderContabTable(rows){
   paintSortIndicators();
   updateTotals();
   paintSortIndicators();
-}
+
+ }
 
 function updateTotals(){
   const tot = document.getElementById('contabTotals');
@@ -1145,15 +1207,36 @@ function buildTercerosRows(rows){
     // ======== NAV / EVENTOS ========
     const menuItems = document.querySelectorAll('.menu-item');
 
-    function showSection(id){
-      document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden')); // Oculta todo
-      const el = document.getElementById(id); if (el) el.classList.remove('hidden');    // Muestra
-      if (id === 'configgeneral')  { initGeneralPage(); loadGeneralConfig(); }
-      if (id === 'cuentas')          loadCuentasConfig();
-      if (id === 'articulos')        loadArticulosConfig();
-      if (id === 'ventas')           initVentasPage();
-      if (id === 'contabilizacion')  initContabilizacionPage();
-    }
+// Call inside DOMContentLoaded
+function showSection(id){
+  // hide all
+  document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+
+  // lazy init per page, all guarded
+  if (id === 'configgeneral')  safe(() => { initGeneralPage();   loadGeneralConfig(); });
+  if (id === 'cuentas')        safe(() => { loadCuentasConfig(); });
+  if (id === 'articulos')      safe(() => { loadArticulosConfig(); });
+  if (id === 'ventas')         safe(() => { initVentasPage();    });
+  if (id === 'contabilizacion') safe(() => { initContabilizacionPage(); applyFilters?.(); });
+}
+
+// Sidebar binding (re-bind safely even if run twice)
+(function bindSidebar(){
+  const items = document.querySelectorAll('.menu-item');
+  items.forEach(item => {
+    if (item._bound) return;
+    item.addEventListener('click', () => {
+      items.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      showSection(item.getAttribute('data-section'));
+    });
+    item._bound = true;
+  });
+})();
+
 
     menuItems.forEach(item => {
       item.addEventListener('click', () => {
