@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.12</h1>
+    <h1>Interfaz Opera - Zeus v1.13</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -761,21 +761,36 @@ function renderContabTable(rows){
             }
 
             // 1) Cargar FUENTE desde config_general (Supabase -> localStorage)
+            // 1) Leer FUENTE y CUENTA_HUESPEDES desde config_general en Supabase
             let fuente = '';
+            let cuentaHuesp = '';
+            
             try {
               const resGen = await loadGeneralFromSupabase();
-              if (resGen && resGen.data && resGen.data.fuente){
-                fuente = String(resGen.data.fuente).trim();
+              if (resGen && resGen.data){
+                if (resGen.data.fuente) {
+                  fuente = String(resGen.data.fuente).trim();
+                }
+                if (resGen.data.cuenta_saldo_huespedes_en_casa) {
+                  cuentaHuesp = String(resGen.data.cuenta_saldo_huespedes_en_casa).trim();
+                }
               }
             } catch (e) {
+              console.warn('No se pudo leer config_general desde Supabase, usando localStorage:', e);
               try {
                 const raw = localStorage.getItem(GENERAL_KEY);
                 if (raw){
                   const obj = JSON.parse(raw);
-                  fuente = String(obj.fuente || '').trim();
+                  if (obj.fuente) {
+                    fuente = String(obj.fuente).trim();
+                  }
+                  if (obj.cuenta_saldo_huespedes_en_casa) {
+                    cuentaHuesp = String(obj.cuenta_saldo_huespedes_en_casa).trim();
+                  }
                 }
               } catch (_e) {}
             }
+            
 
             // 2) Cargar cuentas contables (contabilidad_cuentas / local / tabla)
             let cuentasRows = [];
@@ -861,11 +876,22 @@ function renderContabTable(rows){
               lines.push(line1);
 
               // Fila 2 = igual pero con col 11 invertida
+              // Fila 2 = igual que la primera PERO:
+              // - Col 5 (índice 4) = cuenta_saldo_huespedes_en_casa
+              // - Col 11 (índice 10) = -1 * Col 11
               const base2 = base1.slice();
-              const col11num = parseToNumber(base1[10]);
-              base2[10] = String(-1 * col11num);
+              
+              // Columna 5: cuenta saldo huéspedes en casa
+              // si no hay valor configurado, deja la misma cuenta contable de la fila 1
+              base2[4] = cuentaHuesp || base1[4];
+              
+              // Columna 11: monto invertido
+              const col11Num = parseToNumber(base1[10]);
+              base2[10] = String(Math.round(-1 * col11Num));
+              
               const line2 = base2.join(';');
               lines.push(line2);
+
             });
 
             if (!lines.length){
