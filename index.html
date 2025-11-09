@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.10</h1>
+    <h1>Interfaz Opera - Zeus v1.11</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -344,6 +344,19 @@ function getRowValue(row, col){
   return '';
 }
 
+// === Supabase helpers para CONFIGURACIÓN GENERAL ===
+// Tabla esperada: config_general (id int PK, updated_at timestamptz, data jsonb)
+async function loadGeneralFromSupabase(){
+  const client = await initSupabaseIfNeeded();
+  const { data, error } = await client
+    .from('config_general')
+    .select('data, updated_at')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error; // PGRST116: no rows
+  if (!data) return { data: null, updated_at: null };
+  return { data: data.data || null, updated_at: data.updated_at || null };
+}
 
 
     
@@ -368,6 +381,12 @@ const CONTAB_COLS = [
   'Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
 ];
 
+    // Plantilla base (primera fila de SAMPLE_Transac_Temp) para columnas fijas
+    const TRANSAC_TEMPLATE_LINE = '202510;11;00NUEVO;2025/10/28;13050502;204725658;R6028285;;;Desglose 12981600;829407;;;;OTR;;;;2025/10/28;;Excel;30/10/25 20:34;061;;;0;;;0;XA;0;Excel;;;;0;0;0;;;0;11';
+    const TRANSAC_TEMPLATE_COLS = TRANSAC_TEMPLATE_LINE.split(';');
+
+    // Clave local para configuración general (fuente)
+    const GENERAL_KEY = 'opera_zeus_config_general_v1';
 
     // memoria en runtime para las filas cargadas de Contabilización
     let contabRows = [];
@@ -599,6 +618,25 @@ function initGeneralPage(){
       }catch(e){ if (status) status.textContent = 'No se pudo cargar: ' + e.message; }
     }
 
+        function toDateYYYYMMDDSlash(raw){
+      if (!raw) return '';
+      const s = raw.toString().trim();
+      // 20251028 -> 2025/10/28
+      if (/^\d{8}$/.test(s)){
+        return s.slice(0,4) + '/' + s.slice(4,6) + '/' + s.slice(6,8);
+      }
+      // 2025-10-28 -> 2025/10/28
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)){
+        return s.replace(/-/g, '/');
+      }
+      // 2025/10/28 -> igual
+      if (/^\d{4}\/\d{2}\/\d{2}$/.test(s)){
+        return s;
+      }
+      return s; // fallback
+    }
+
+    
     // ======== CONTABILIZACIÓN (TSV/TXT) ========
     function parseTSV(text){
       // Normaliza saltos de línea (CRLF/CR -> LF) y descarta líneas totalmente vacías
@@ -657,54 +695,201 @@ function renderContabTable(rows){
 
 
 
-    function initContabilizacionPage(){
+       function initContabilizacionPage(){
       const fileInput = document.getElementById('contabFile');
       const dz        = document.getElementById('contabDropZone');
       const status    = document.getElementById('contabStatus');
       const genBtn    = document.getElementById('contabGenerate');
 
-      const genTerBtn = document.getElementById('contabGenerateTerceros');
-      if (genTerBtn && !genTerBtn._bound){
-        genTerBtn.addEventListener('click', () => {
-          const st = document.getElementById('contabStatus');
-          const rows = buildTercerosRows(contabRows);
-          if (!rows.length){ if (st) st.textContent = 'No hay filas con Tipo_Documento_Cliente.'; return; }
-          const content = rows.map(r => r.join(';')).join('\n');
-          downloadText('Terceros_Zeus.txt', content);
-          if (st) st.textContent = 'Generado Terceros_Zeus.txt ('+rows.length+' fila(s))';
-        });
-        genTerBtn._bound = true;
-      }
-
       async function handleFile(file){
         if (!file) return;
-        try { const text = await file.text(); contabRows = parseTSV(text); renderContabTable(contabRows); if (status) status.textContent = 'Cargadas ' + contabRows.length + ' fila(s)'; }
-        catch (err){ if (status) status.textContent = 'Error leyendo archivo: ' + err.message; }
+        try {
+          const text = await file.text();
+          contabRows = parseTSV(text);
+          renderContabTable(contabRows);
+          if (status) status.textContent = 'Cargadas ' + contabRows.length + ' fila(s)';
+        } catch (err){
+          console.error(err);
+          if (status) status.textContent = 'Error leyendo archivo: ' + err.message;
+        }
       }
 
       if (fileInput && !fileInput._bound){
-        fileInput.addEventListener('change', (e) => { const file = e.target.files?.[0]; handleFile(file); });
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files?.[0];
+          handleFile(file);
+        });
         fileInput._bound = true;
       }
 
       if (dz && !dz._bound){
         dz.addEventListener('click', () => { fileInput?.click(); });
-        dz.addEventListener('dragover', (ev) => { ev.preventDefault(); dz.classList.add('dragover'); });
+        dz.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          dz.classList.add('dragover');
+        });
         dz.addEventListener('dragleave', () => { dz.classList.remove('dragover'); });
-        dz.addEventListener('drop', (ev) => { ev.preventDefault(); dz.classList.remove('dragover'); const file = ev.dataTransfer?.files?.[0]; handleFile(file); });
+        dz.addEventListener('drop', (ev) => {
+          ev.preventDefault();
+          dz.classList.remove('dragover');
+          const file = ev.dataTransfer?.files?.[0];
+          handleFile(file);
+        });
         dz._bound = true;
       }
 
       if (genBtn && !genBtn._bound){
-        genBtn.addEventListener('click', () => {
-          const rowsCount = contabRows.length || 0;
-          console.log('Generar Archivo Contabilizacion Zeus - filas:', rowsCount, contabRows);
-          if (status) status.textContent = 'Generado archivo (simulado) con ' + rowsCount + ' fila(s).';
-          // TODO: definir formato final (descarga .txt/.csv ó envío a API)
+        genBtn.addEventListener('click', async () => {
+          try {
+            const rowsCount = contabRows.length || 0;
+            if (!rowsCount){
+              if (status) status.textContent = 'No hay filas para generar.';
+              return;
+            }
+
+            // 1) Cargar FUENTE desde config_general (Supabase -> localStorage)
+            let fuente = '';
+            try {
+              const resGen = await loadGeneralFromSupabase();
+              if (resGen && resGen.data && resGen.data.fuente){
+                fuente = String(resGen.data.fuente).trim();
+              }
+            } catch (e) {
+              try {
+                const raw = localStorage.getItem(GENERAL_KEY);
+                if (raw){
+                  const obj = JSON.parse(raw);
+                  fuente = String(obj.fuente || '').trim();
+                }
+              } catch (_e) {}
+            }
+
+            // 2) Cargar cuentas contables (contabilidad_cuentas / local / tabla)
+            let cuentasRows = [];
+            try {
+              const resC = await loadCuentasFromSupabase();
+              cuentasRows = resC.rows || [];
+            } catch (e) {
+              try {
+                const raw = localStorage.getItem(CUENTAS_KEY);
+                if (raw) cuentasRows = JSON.parse(raw);
+              } catch (_e) {}
+              if (!cuentasRows || !cuentasRows.length){
+                cuentasRows = getCuentasTableData();
+              }
+            }
+
+            const cuentasMap = {};
+            if (Array.isArray(cuentasRows)){
+              cuentasRows.forEach(r => {
+                const code = (r['Codigo de Concepto Opera'] || '').toString().trim();
+                if (code) cuentasMap[code] = r;
+              });
+            }
+
+            // 3) Construir filas de salida (2 por cada fila de Contabilización)
+            const lines = [];
+
+            contabRows.forEach(src => {
+              const fechaRaw = (src['Fecha'] || '').toString().trim();
+              const fechaYMD = toDateYYYYMMDDSlash(fechaRaw);
+              const fecha6   = fechaRaw.slice(0, 6);
+
+              const codCargo = (src['Codigo_Cargo_Opera'] || '').toString().trim();
+              const cuentaCfg = cuentasMap[codCargo] || {};
+              const cuentaContable = (cuentaCfg['Cuenta Contable Zeus'] || '').toString().trim();
+              const centroCosto    = (cuentaCfg['Centro de costo'] || '').toString().trim();
+
+              const idCliente   = (src['ID_Cliente'] || '').toString().trim();
+              const folio       = (src['Folio'] || '').toString().trim();
+              const nombreCargo = (src['Nombre_Cargo_Opera'] || '').toString().trim();
+              const tipoFactura = (src['Tipo_Factura'] || '').toString().trim();
+              const numFactura  = (src['Factura'] || '').toString().trim();
+              const vencRaw     = (src['Vencimiento_Factura'] || '').toString().trim();
+              const vencYMD     = toDateYYYYMMDDSlash(vencRaw);
+
+              const monto = parseToNumber(src['Monto_Cargo']);
+              const cuentaStr = cuentaContable;
+              const debeNeg = cuentaStr.startsWith('41') || cuentaStr.startsWith('11') || cuentaStr.startsWith('24');
+              const montoCol11 = debeNeg ? -1 * monto : monto;
+              const montoCol11Str = String(Math.round(montoCol11));
+
+              // Base Fila 1 = copia de la plantilla
+              const base1 = TRANSAC_TEMPLATE_COLS.slice(); // array de strings
+
+              // Columnas a sobreescribir (1-based -> 0-based)
+              // 1: primeros 6 de Fecha
+              base1[0]  = fecha6 || '';
+              // 2: Fuente (config_general)
+              base1[1]  = fuente || '';
+              // 4: Fecha en YYYY/MM/DD
+              base1[3]  = fechaYMD || '';
+              // 5: Cuenta contable Zeus
+              base1[4]  = cuentaContable || '';
+              // 6: ID_Cliente
+              base1[5]  = idCliente || '';
+              // 7: Folio
+              base1[6]  = folio || '';
+              // 8: Centro de costo
+              base1[7]  = centroCosto || '';
+              // 10: Nombre_Cargo_Opera
+              base1[9]  = nombreCargo || '';
+              // 11: Monto (según regla de la cuenta)
+              base1[10] = montoCol11Str;
+              // 17: Tipo_Factura
+              base1[16] = tipoFactura || '';
+              // 18: Factura
+              base1[17] = numFactura || '';
+              // 19: Vencimiento_Factura en YYYY/MM/DD
+              base1[18] = vencYMD || '';
+
+              // Fila 1
+              const line1 = base1.join(';');
+              lines.push(line1);
+
+              // Fila 2 = igual pero con col 11 invertida
+              const base2 = base1.slice();
+              const col11num = parseToNumber(base1[10]);
+              base2[10] = String(-1 * col11num);
+              const line2 = base2.join(';');
+              lines.push(line2);
+            });
+
+            if (!lines.length){
+              if (status) status.textContent = 'No hay filas válidas para generar.';
+              return;
+            }
+
+            const content = lines.join('\n') + '\n';
+
+            // 4) Descargar archivo: Transac_Temp_Zeus - <timestamp>.txt
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+
+            const now = new Date();
+            const iso = now.toISOString(); // 2025-10-30T19:27:12.978Z
+            const tsCore = iso.slice(0,19).replace(/:/g,''); // 2025-10-30T192712
+            const ms = String(now.getMilliseconds()).padStart(3,'0');
+            const stamp = tsCore + '.' + ms;                 // 2025-10-30T192712.978
+
+            a.href = url;
+            a.download = 'Transac_Temp_Zeus - ' + stamp + '.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (status) status.textContent = 'Archivo generado: ' + lines.length + ' fila(s) (2 por cada registro de la tabla).';
+          } catch (e){
+            console.error('Error generando archivo de contabilización:', e);
+            if (status) status.textContent = 'Error generando archivo: ' + e.message;
+          }
         });
         genBtn._bound = true;
       }
     }
+
 
     // ======== UTILIDADES GENERALES ========
     function pad2(n){ return n.toString().padStart(2,'0'); }
