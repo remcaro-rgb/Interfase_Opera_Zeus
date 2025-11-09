@@ -26,6 +26,8 @@
   </style>
   <!-- Supabase CDN (v2) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SheetJS para exportar .xlsx -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.2/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="sidebar">
@@ -42,7 +44,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.08</h1>
+    <h1>Interfaz Opera - Zeus v1.09</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -137,6 +139,36 @@
         <small style="color:#64748b">o haz clic para seleccionar</small>
       </div>
 
+      <!-- Filtros Contabilización -->
+<div id="contabFilters" style="display:grid;grid-template-columns:repeat(6,minmax(140px,1fr));gap:8px;align-items:end;margin-top:12px;">
+  <div>
+    <label style="font-size:12px;color:#94a3b8">Fecha desde (YYYYMMDD)</label>
+    <input id="contabDateFrom" type="text" placeholder="YYYYMMDD" />
+  </div>
+  <div>
+    <label style="font-size:12px;color:#94a3b8">Fecha hasta (YYYYMMDD)</label>
+    <input id="contabDateTo" type="text" placeholder="YYYYMMDD" />
+  </div>
+  <div>
+    <label style="font-size:12px;color:#94a3b8">Monto mín.</label>
+    <input id="contabMontoMin" type="text" placeholder="0" />
+  </div>
+  <div>
+    <label style="font-size:12px;color:#94a3b8">Monto máx.</label>
+    <input id="contabMontoMax" type="text" placeholder="∞" />
+  </div>
+  <div style="grid-column: span 2;">
+    <label style="font-size:12px;color:#94a3b8">Buscar texto (cualquier columna)</label>
+    <input id="contabTextSearch" type="text" placeholder="Nombre, ciudad, email, etc." />
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;">
+  <button id="contabExportXLS" type="button">Exportar Excel</button>
+  <span id="contabTotals" style="margin-left:6px;color:#94a3b8"></span>
+</div>
+
+      
       <div style="margin-top:12px;border-radius:12px;overflow-x:auto;border:1px solid #1f2937;">
         <table id="contabTable" style="min-width:800px;">
           <thead id="contabHead"></thead>
@@ -342,6 +374,39 @@ function getRowValue(row, col){
 }
 
 
+// --- Normalizadores y formato dinero (ya los usas; incluyo por si faltan) ---
+function parseToNumber(val){
+  let s = (val ?? '').toString().trim();
+  if (!s) return 0;
+  s = s.replace(/[^0-9,.-]/g, '');
+  const hasComma = s.includes(','), hasDot = s.includes('.');
+  if (hasComma && hasDot){
+    const decPos = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+    const intPart = s.slice(0, decPos).replace(/[.,]/g, '');
+    const decPart = s.slice(decPos+1).replace(/[.,]/g, '');
+    s = intPart + '.' + decPart;
+  } else if (hasComma && !hasDot){
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    s = s.replace(/,/g, '');
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoneyUSD(n){
+  const x = Number(n);
+  return Number.isFinite(x)
+    ? '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : '$0.00';
+}
+
+// --- Fecha YYYYMMDD a número para comparar ---
+function yyyymmddToNum(s){
+  const t = (s ?? '').toString().trim();
+  if (!/^\d{8}$/.test(t)) return NaN;
+  return Number(t);
+}
 
     
   // MAIN APP SCRIPT
@@ -365,6 +430,9 @@ const CONTAB_COLS = [
   'Tipo_Documento_Cliente','Tipo_Factura','Vencimiento_Factura','Col_U','Folio','Col_W'
 ];
 
+  let contabRows = [];          // ya existe en tu código
+let contabFiltered = [];      // filas filtradas + ordenadas para render
+let contabSort = { key: null, dir: 1 }; // 1=asc, -1=desc
 
     // memoria en runtime para las filas cargadas de Contabilización
     let contabRows = [];
@@ -605,6 +673,158 @@ function renderContabTable(rows){
   const tbody = document.getElementById('contabBody');
   if (!thead || !tbody) return;
 
+  function applyFilters(){
+  // Lee filtros
+  const df = document.getElementById('contabDateFrom')?.value.trim();
+  const dt = document.getElementById('contabDateTo')?.value.trim();
+  const mn = document.getElementById('contabMontoMin')?.value.trim();
+  const mx = document.getElementById('contabMontoMax')?.value.trim();
+  const q  = (document.getElementById('contabTextSearch')?.value || '').toLowerCase();
+
+  const numDF = df ? yyyymmddToNum(df) : NaN;
+  const numDT = dt ? yyyymmddToNum(dt) : NaN;
+  const numMN = mn ? parseToNumber(mn) : NaN;
+  const numMX = mx ? parseToNumber(mx) : NaN;
+
+  let out = contabRows.slice();
+
+  out = out.filter(r => {
+    // Fecha
+    const f = yyyymmddToNum(r['Fecha']);
+    if (!isNaN(numDF) && !isNaN(f) && f < numDF) return false;
+    if (!isNaN(numDT) && !isNaN(f) && f > numDT) return false;
+    // Monto
+    const m = parseToNumber(r['Monto_Cargo']);
+    if (!isNaN(numMN) && m < numMN) return false;
+    if (!isNaN(numMX) && m > numMX) return false;
+    // Texto (cualquier columna)
+    if (q){
+      const hit = CONTAB_COLS.some(c => (r[c] ?? '').toString().toLowerCase().includes(q));
+      if (!hit) return false;
+    }
+    return true;
+  });
+
+  // Orden actual
+  if (contabSort.key){
+    const k = contabSort.key;
+    const dir = contabSort.dir;
+    out.sort((a,b) => {
+      if (k === 'Monto_Cargo') {
+        return (parseToNumber(a[k]) - parseToNumber(b[k])) * dir;
+      } else if (k === 'Fecha'){
+        return (yyyymmddToNum(a[k]) - yyyymmddToNum(b[k])) * dir;
+      } else {
+        const A = (a[k] ?? '').toString().toLowerCase();
+        const B = (b[k] ?? '').toString().toLowerCase();
+        if (A < B) return -1*dir;
+        if (A > B) return  1*dir;
+        return 0;
+      }
+    });
+  }
+
+  contabFiltered = out;
+  renderContabTable(out);   // tu renderer existente
+  enableHeaderSorting();
+  paintSortIndicators();
+  updateTotals();
+  paintSortIndicators();
+}
+
+function updateTotals(){
+  const tot = document.getElementById('contabTotals');
+  if (!tot) return;
+  const sum = contabFiltered.reduce((acc,r) => acc + parseToNumber(r['Monto_Cargo']), 0);
+  tot.textContent = `Filas: ${contabFiltered.length} • Total Monto_Cargo: ${formatMoneyUSD(sum)}`;
+}
+
+function paintSortIndicators(){
+  // Marca ▲▼ en el th de la columna ordenada
+  const head = document.getElementById('contabHead');
+  if (!head) return;
+  const ths = head.querySelectorAll('th');
+  ths.forEach((th, idx) => {
+    const col = CONTAB_COLS[idx];
+    const base = col;
+    if (contabSort.key === col){
+      th.textContent = `${base} ${contabSort.dir === 1 ? '▲' : '▼'}`;
+    } else {
+      th.textContent = base;
+    }
+  });
+}
+
+// Hook: al terminar de renderizar cabecera, conectar eventos de orden
+function enableHeaderSorting(){
+  const head = document.getElementById('contabHead');
+  if (!head) return;
+  const ths = head.querySelectorAll('th');
+  ths.forEach((th, idx) => {
+    const col = CONTAB_COLS[idx];
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      if (contabSort.key === col){
+        contabSort.dir = -contabSort.dir; // toggle
+      } else {
+        contabSort.key = col;
+        contabSort.dir = 1;
+      }
+      applyFilters();
+    });
+  });
+}
+
+// Exporta a Excel si está XLSX, si no, CSV
+function exportContab(){
+  const rows = contabFiltered.length ? contabFiltered : contabRows;
+  if (!rows.length){ alert('No hay filas para exportar'); return; }
+
+  // Construye objeto plano en orden CONTAB_COLS
+  const data = rows.map(r => {
+    const obj = {};
+    CONTAB_COLS.forEach(c => {
+      if (c === 'Monto_Cargo'){
+        // número crudo para Excel (no $), Excel aplica formato numérico
+        obj[c] = parseToNumber(r[c]);
+      } else {
+        obj[c] = r[c] ?? '';
+      }
+    });
+    return obj;
+  });
+
+  if (window.XLSX){
+    const ws = XLSX.utils.json_to_sheet(data, { header: CONTAB_COLS });
+    // Estilo básico: formato numérico a Monto_Cargo
+    const ref = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 1; R <= (ref.e.r); R++){
+      const cell = XLSX.utils.encode_cell({ r:R, c: CONTAB_COLS.indexOf('Monto_Cargo') });
+      if (ws[cell]) ws[cell].z = '#,##0.00';
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Contabilizacion');
+    XLSX.writeFile(wb, 'Contabilizacion_Zeus.xlsx');
+  } else {
+    // Fallback CSV
+    const header = CONTAB_COLS.join(',');
+    const body = data.map(row =>
+      CONTAB_COLS.map(k => {
+        const v = row[k];
+        const s = (v ?? '').toString().replace(/"/g,'""');
+        return `"${s}"`;
+      }).join(',')
+    ).join('\n');
+    const csv = header + '\n' + body + '\n';
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Contabilizacion_Zeus.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
+
   // Clear
   thead.innerHTML = '';
   tbody.innerHTML = '';
@@ -650,6 +870,21 @@ function renderContabTable(rows){
       const status    = document.getElementById('contabStatus');
       const genBtn    = document.getElementById('contabGenerate');
 
+        ['contabDateFrom','contabDateTo','contabMontoMin','contabMontoMax','contabTextSearch']
+          .forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el._bound){
+              el.addEventListener('input', applyFilters);
+              el._bound = true;
+            }
+          });
+        
+        const btnX = document.getElementById('contabExportXLS');
+        if (btnX && !btnX._bound){
+          btnX.addEventListener('click', exportContab);
+          btnX._bound = true;
+        }
+
       const genTerBtn = document.getElementById('contabGenerateTerceros');
       if (genTerBtn && !genTerBtn._bound){
         genTerBtn.addEventListener('click', () => {
@@ -665,7 +900,7 @@ function renderContabTable(rows){
 
       async function handleFile(file){
         if (!file) return;
-        try { const text = await file.text(); contabRows = parseTSV(text); renderContabTable(contabRows); if (status) status.textContent = 'Cargadas ' + contabRows.length + ' fila(s)'; }
+        try { const text = await file.text(); contabRows = parseTSV(text); applyFilters(); if (status) status.textContent = 'Cargadas ' + contabRows.length + ' fila(s)'; }
         catch (err){ if (status) status.textContent = 'Error leyendo archivo: ' + err.message; }
       }
 
