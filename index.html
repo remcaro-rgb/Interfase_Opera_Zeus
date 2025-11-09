@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.08</h1>
+    <h1>Interfaz Opera - Zeus v1.09</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -57,6 +57,9 @@
 
     <label for="inpCuentaPorCobrar" style="color:#94a3b8;">Cuenta por cobrar por defecto para clientes</label>
     <input id="inpCuentaPorCobrar" type="text" inputmode="numeric" placeholder="Sólo números" />
+
+    <label for="inpFuente" style="color:#94a3b8;">Fuente para contabilizacion</label>
+    <input id="inpFuente" type="text" placeholder="Alfanumérico" />
   </div>
 
   <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;">
@@ -450,11 +453,13 @@ async function saveGeneralConfig(){
   const cuentaH = sanitizeDigits(document.getElementById('inpCuentaHuespedes')?.value);
   const codVend = sanitizeAlnum(document.getElementById('inpCodVendedor')?.value);
   const cuentaC = sanitizeDigits(document.getElementById('inpCuentaPorCobrar')?.value);
+  const fuente  = sanitizeAlnum(document.getElementById('inpFuente')?.value);
 
   const obj = {
     cuenta_saldo_huespedes_en_casa: cuentaH || '',
     codigo_vendedor_default: codVend || '',
-    cuenta_por_cobrar_default: cuentaC || ''
+    cuenta_por_cobrar_default: cuentaC || '',
+    fuente:                    fuente  || ''
   };
 
   // Backup local
@@ -487,9 +492,13 @@ async function loadGeneralConfig(){
       const inpH = document.getElementById('inpCuentaHuespedes');
       const inpV = document.getElementById('inpCodVendedor');
       const inpC = document.getElementById('inpCuentaPorCobrar');
+      const inpF = document.getElementById('inpFuente');
+
       if (inpH) inpH.value = sanitizeDigits(data.cuenta_saldo_huespedes_en_casa || '');
       if (inpV) inpV.value = sanitizeAlnum(data.codigo_vendedor_default || '');
       if (inpC) inpC.value = sanitizeDigits(data.cuenta_por_cobrar_default || '');
+      if (inpF) inpF.value = sanitizeAlnum(data.fuente || '');
+
       if (st) st.textContent = 'Configuración cargada';
       if (ts) ts.textContent = updated_at ? formatTimestamp(updated_at) : '(sin publicar)';
     } else {
@@ -503,9 +512,13 @@ function initGeneralPage(){
   const h = document.getElementById('inpCuentaHuespedes');
   const v = document.getElementById('inpCodVendedor');
   const c = document.getElementById('inpCuentaPorCobrar');
+  const f = document.getElementById('inpFuente');
+
   if (h && !h._bound){ h.addEventListener('input', () => { h.value = sanitizeDigits(h.value); }); h._bound = true; }
   if (v && !v._bound){ v.addEventListener('input', () => { v.value = sanitizeAlnum(v.value); }); v._bound = true; }
   if (c && !c._bound){ c.addEventListener('input', () => { c.value = sanitizeDigits(c.value); }); c._bound = true; }
+  if (f && !f._bound){f.addEventListener('input', () => { f.value = sanitizeAlnum(f.value); }); f._bound = true;}
+
   const btn = document.getElementById('generalSave');
   if (btn && !btn._bound){ btn.addEventListener('click', saveGeneralConfig); btn._bound = true; }
 }
@@ -1011,6 +1024,8 @@ function buildTercerosRows(rows){
         console.assert(typeof loadGeneralFromSupabase === 'function', 'loadGeneralFromSupabase debe existir');
         console.assert(sanitizeDigits('A1B2C3') === '123', 'sanitizeDigits');
         console.assert(sanitizeAlnum('A-1_B 2!') === 'A1B2', 'sanitizeAlnum');
+
+        console.assert(document.getElementById('inpFuente') instanceof HTMLInputElement, 'Campo Fuente existe');
 
         
         // Extra: smoke test de invocación segura (no debe lanzar)
