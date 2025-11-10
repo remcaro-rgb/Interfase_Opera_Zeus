@@ -700,6 +700,7 @@ function renderContabTable(rows){
       const dz        = document.getElementById('contabDropZone');
       const status    = document.getElementById('contabStatus');
       const genBtn    = document.getElementById('contabGenerate');
+      const tercerosBtn = document.getElementById('contabGenerateTerceros');
 
       async function handleFile(file){
         if (!file) return;
@@ -943,9 +944,23 @@ function renderContabTable(rows){
         });
         genBtn._bound = true;
       }
+
+      const genTerBtn = document.getElementById('contabGenerateTerceros');
+      if (genTerBtn && !genTerBtn._bound){
+        genTerBtn.addEventListener('click', () => {
+          const st = document.getElementById('contabStatus');
+          const rows = buildTercerosRows(contabRows);
+          if (!rows.length){ if (st) st.textContent = 'No hay filas con Tipo_Documento_Cliente.'; return; }
+          const content = rows.map(r => r.join(';')).join('\n');
+          downloadText('Terceros_Zeus.txt', content);
+          if (st) st.textContent = 'Generado Terceros_Zeus.txt ('+rows.length+' fila(s))';
+        });
+        genTerBtn._bound = true;
+      }
+      
     }
 
-
+    
 
     // ======== UTILIDADES GENERALES ========
     function pad2(n){ return n.toString().padStart(2,'0'); }
