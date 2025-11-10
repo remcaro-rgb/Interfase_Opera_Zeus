@@ -1039,8 +1039,8 @@ function buildTercerosRows(rows){
     const name = safeField(r['Nombre_Cliente']);
     if (!id || !name) continue; // ignora filas sin clave
     const key = id + '||' + name.toLowerCase();
-    if (seen.has(key)) continue; // 🔁 elimina duplicados
-    seen.add(key);
+   // if (seen.has(key)) continue; // 🔁 elimina duplicados
+    //seen.add(key);
 
     const tipoDoc = (r['Tipo_Documento_Cliente']||'').toString().trim();
     const direccion = safeField(r['Direccion_Cliente']);
