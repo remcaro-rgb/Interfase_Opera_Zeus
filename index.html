@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.15</h1>
+    <h1>Interfaz Opera - Zeus v1.16</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -817,6 +817,12 @@ function renderContabTable(rows){
               const fechaYMD    = toDateYYYYMMDDSlash(fechaRaw);
 
               const codCargo    = (src['Codigo_Cargo_Opera'] || '').toString().trim();
+
+              // ⬇️ NUEVO: saltar filas con Codigo_Cargo_Opera = 9991
+              if (codCargo === '9991') {
+                return; // no genera ninguna de las 2 filas de Transac para este registro
+              }
+              
               const cuentaCfg   = cuentasMap[codCargo] || {};
               const cuentaCont  = (cuentaCfg['Cuenta Contable Zeus'] || '').toString().trim();
               const centroCosto = (cuentaCfg['Centro de costo']       || '').toString().trim();
