@@ -751,6 +751,7 @@ function renderContabTable(rows){
         dz._bound = true;
       }
 
+      // Generar archivos Zeus
       if (genBtn && !genBtn._bound){
         genBtn.addEventListener('click', async () => {
           try {
@@ -760,39 +761,34 @@ function renderContabTable(rows){
               return;
             }
 
-            // 1) Cargar FUENTE desde config_general (Supabase -> localStorage)
-            // 1) Leer FUENTE y CUENTA_HUESPEDES desde config_general en Supabase
+            // 1) Leer FUENTE y CUENTA_HUESPEDES desde config_general
             let fuente = '';
             let cuentaHuesp = '';
-            
             try {
               const resGen = await loadGeneralFromSupabase();
               if (resGen && resGen.data){
-                if (resGen.data.fuente) {
+                if (resGen.data.fuente){
                   fuente = String(resGen.data.fuente).trim();
                 }
-                if (resGen.data.cuenta_saldo_huespedes_en_casa) {
+                if (resGen.data.cuenta_saldo_huespedes_en_casa){
                   cuentaHuesp = String(resGen.data.cuenta_saldo_huespedes_en_casa).trim();
                 }
               }
             } catch (e) {
-              console.warn('No se pudo leer config_general desde Supabase, usando localStorage:', e);
+              // Fallback localStorage
               try {
                 const raw = localStorage.getItem(GENERAL_KEY);
                 if (raw){
                   const obj = JSON.parse(raw);
-                  if (obj.fuente) {
-                    fuente = String(obj.fuente).trim();
-                  }
-                  if (obj.cuenta_saldo_huespedes_en_casa) {
+                  if (obj.fuente) fuente = String(obj.fuente).trim();
+                  if (obj.cuenta_saldo_huespedes_en_casa){
                     cuentaHuesp = String(obj.cuenta_saldo_huespedes_en_casa).trim();
                   }
                 }
               } catch (_e) {}
             }
-            
 
-            // 2) Cargar cuentas contables (contabilidad_cuentas / local / tabla)
+            // 2) Leer cuentas contables (contabilidad_cuentas)
             let cuentasRows = [];
             try {
               const resC = await loadCuentasFromSupabase();
@@ -815,93 +811,84 @@ function renderContabTable(rows){
               });
             }
 
-            // 3) Construir filas de salida (2 por cada fila de Contabilización)
+            // 3) Construir filas de Transac_Temp_Zeus (2 por cada fila de la tabla)
             const lines = [];
+            let sumPos = 0;
+            let sumNeg = 0;
 
             contabRows.forEach(src => {
-              const fechaRaw = (src['Fecha'] || '').toString().trim();
-              const fechaYMD = toDateYYYYMMDDSlash(fechaRaw);
-              const fecha6   = fechaRaw.slice(0, 6);
+              const fechaRaw   = (src['Fecha'] || '').toString().trim();
+              const fechaDigits = fechaRaw.replace(/[^0-9]/g, '');
+              const fecha6      = fechaDigits.slice(0, 6);
+              const fechaYMD    = toDateYYYYMMDDSlash(fechaRaw);
 
-              const codCargo = (src['Codigo_Cargo_Opera'] || '').toString().trim();
-              const cuentaCfg = cuentasMap[codCargo] || {};
-              const cuentaContable = (cuentaCfg['Cuenta Contable Zeus'] || '').toString().trim();
-              const centroCosto    = (cuentaCfg['Centro de costo'] || '').toString().trim();
+              const codCargo    = (src['Codigo_Cargo_Opera'] || '').toString().trim();
+              const cuentaCfg   = cuentasMap[codCargo] || {};
+              const cuentaCont  = (cuentaCfg['Cuenta Contable Zeus'] || '').toString().trim();
+              const centroCosto = (cuentaCfg['Centro de costo']       || '').toString().trim();
 
               const idCliente   = (src['ID_Cliente'] || '').toString().trim();
-              const folio       = (src['Folio'] || '').toString().trim();
+              const folio       = (src['Folio']      || '').toString().trim();
               const nombreCargo = (src['Nombre_Cargo_Opera'] || '').toString().trim();
-              const tipoFactura = (src['Tipo_Factura'] || '').toString().trim();
-              const numFactura  = (src['Factura'] || '').toString().trim();
+              const tipoFactura = (src['Tipo_Factura']       || '').toString().trim();
+              const numFactura  = (src['Factura']            || '').toString().trim();
               const vencRaw     = (src['Vencimiento_Factura'] || '').toString().trim();
               const vencYMD     = toDateYYYYMMDDSlash(vencRaw);
 
-              const monto = parseToNumber(src['Monto_Cargo']);
-              const cuentaStr = cuentaContable;
-              const debeNeg = cuentaStr.startsWith('41') || cuentaStr.startsWith('11') || cuentaStr.startsWith('24');
-              const montoCol11 = debeNeg ? -1 * monto : monto;
+              const monto       = parseToNumber(src['Monto_Cargo']);
+              const debeNeg     = cuentaCont.startsWith('41') || cuentaCont.startsWith('11') || cuentaCont.startsWith('24');
+              const montoCol11  = debeNeg ? -1 * monto : monto;
               const montoCol11Str = String(Math.round(montoCol11));
 
-              // Base Fila 1 = copia de la plantilla
-              const base1 = TRANSAC_TEMPLATE_COLS.slice(); // array de strings
+              // Base fila 1: copia de la plantilla (mantiene columnas que NO cambiamos)
+              const base1 = TRANSAC_TEMPLATE_COLS.slice();
 
-              // Columnas a sobreescribir (1-based -> 0-based)
-              // 1: primeros 6 de Fecha
+              // 1.1 Col 1: primeros 6 de Fecha
               base1[0]  = fecha6 || '';
-              // 2: Fuente (config_general)
+              // 1.2 Col 2: fuente
               base1[1]  = fuente || '';
-              // 4: Fecha en YYYY/MM/DD
+              // 1.3 Col 4: Fecha YYYY/MM/DD
               base1[3]  = fechaYMD || '';
-              // 5: Cuenta contable Zeus
-              base1[4]  = cuentaContable || '';
-              // 6: ID_Cliente
+              // 1.4 Col 5: Cuenta Contable Zeus
+              base1[4]  = cuentaCont || '';
+              // 1.5 Col 6: ID_Cliente
               base1[5]  = idCliente || '';
-              // 7: Folio
+              // 1.6 Col 7: Folio
               base1[6]  = folio || '';
-              // 8: Centro de costo
+              // 1.7 Col 8: Centro de costo
               base1[7]  = centroCosto || '';
-              // 10: Nombre_Cargo_Opera
+              // 1.7 bis Col 10: Nombre_Cargo_Opera
               base1[9]  = nombreCargo || '';
-              // 11: Monto (según regla de la cuenta)
+              // 1.8 Col 11: monto con signo según cuenta
               base1[10] = montoCol11Str;
-              // 17: Tipo_Factura
+              // 1.9 Col 17: Tipo_Factura
               base1[16] = tipoFactura || '';
-              // 18: Factura
+              // 1.10 Col 18: Factura
               base1[17] = numFactura || '';
-              // 19: Vencimiento_Factura en YYYY/MM/DD
+              // 1.11 Col 19: Vencimiento_Factura YYYY/MM/DD
               base1[18] = vencYMD || '';
 
-               // Acumular sumas para DOCUMENT (fila 1)
+              // Acumular sumas para DOCUMENT (fila 1)
               const n1 = parseToNumber(base1[10]);
               if (n1 > 0) sumPos += n1;
               else if (n1 < 0) sumNeg += n1;
 
-              // Fila 1
               const line1 = base1.join(';');
               lines.push(line1);
 
-              // Fila 2 = igual pero con col 11 invertida
               // Fila 2 = igual que la primera PERO:
-              // - Col 5 (índice 4) = cuenta_saldo_huespedes_en_casa
-              // - Col 11 (índice 10) = -1 * Col 11
+              // - Col 5 = cuenta_saldo_huespedes_en_casa
+              // - Col 11 = -1 * Col 11
               const base2 = base1.slice();
-              
-              // Columna 5: cuenta saldo huéspedes en casa
-              // si no hay valor configurado, deja la misma cuenta contable de la fila 1
               base2[4] = cuentaHuesp || base1[4];
-              
-              // Columna 11: monto invertido
-              const col11Num = parseToNumber(base1[10]);
-              base2[10] = String(Math.round(-1 * col11Num));
 
               const n2 = -1 * n1;
               base2[10] = String(Math.round(n2));
               if (n2 > 0) sumPos += n2;
               else if (n2 < 0) sumNeg += n2;
-              
+
               const line2 = base2.join(';');
               lines.push(line2);
-
             });
 
             if (!lines.length){
@@ -909,32 +896,14 @@ function renderContabTable(rows){
               return;
             }
 
-            const content = lines.join('\n') + '\n';
-
-            // 4) Descargar archivo: Transac_Temp_Zeus - <timestamp>.txt
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-
-            const now = new Date();
-            const iso = now.toISOString(); // 2025-10-30T19:27:12.978Z
-            const tsCore = iso.slice(0,19).replace(/:/g,''); // 2025-10-30T192712
-            const ms = String(now.getMilliseconds()).padStart(3,'0');
-            const stamp = tsCore + '.' + ms;                 // 2025-10-30T192712.978
-
+            // 4) Timestamp compartido para ambos archivos
+            const now      = new Date();
+            const iso      = now.toISOString(); // 2025-10-30T19:27:12.978Z
             const [dPart, tPartZ] = iso.split('T'); // ["2025-10-30","19:27:12.978Z"]
             const tPart    = (tPartZ || '').replace('Z',''); // "19:27:12.978"
             const ts       = dPart + 'T' + tPart.replace(/:/g,''); // 2025-10-30T192712.978
 
-            /*
-            a.href = url;
-            a.download = 'Transac_Temp_Zeus - ' + stamp + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            */
-                   // 5) Archivo Transac_Temp_Zeus
+            // 5) Archivo Transac_Temp_Zeus
             const contentTransac = lines.join('\n') + '\n';
             {
               const blob = new Blob([contentTransac], { type:'text/plain;charset=utf-8' });
@@ -993,16 +962,15 @@ function renderContabTable(rows){
               URL.revokeObjectURL(url2);
             }
 
-
-            if (status) status.textContent = 'Archivo generado: ' + lines.length + ' fila(s) (2 por cada registro de la tabla).';
+            if (status) status.textContent = 'Archivos generados: Transac_Temp_Zeus y Document_Temp_Zeus.';
           } catch (e){
-            console.error('Error generando archivo de contabilización:', e);
-            if (status) status.textContent = 'Error generando archivo: ' + e.message;
+            console.error('Error generando archivos Zeus:', e);
+            if (status) status.textContent = 'Error generando archivos: ' + e.message;
           }
         });
         genBtn._bound = true;
       }
-    }
+
 
 
     // ======== UTILIDADES GENERALES ========
