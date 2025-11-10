@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.14</h1>
+    <h1>Interfaz Opera - Zeus v1.15</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -695,25 +695,12 @@ function renderContabTable(rows){
 
 
 
-       function initContabilizacionPage(){
+    function initContabilizacionPage(){
       const fileInput = document.getElementById('contabFile');
       const dz        = document.getElementById('contabDropZone');
       const status    = document.getElementById('contabStatus');
       const genBtn    = document.getElementById('contabGenerate');
 
-      const genTerBtn = document.getElementById('contabGenerateTerceros');
-      if (genTerBtn && !genTerBtn._bound){
-        genTerBtn.addEventListener('click', () => {
-          const st = document.getElementById('contabStatus');
-          const rows = buildTercerosRows(contabRows);
-          if (!rows.length){ if (st) st.textContent = 'No hay filas con Tipo_Documento_Cliente.'; return; }
-          const content = rows.map(r => r.join(';')).join('\n');
-          downloadText('Terceros_Zeus.txt', content);
-          if (st) st.textContent = 'Generado Terceros_Zeus.txt ('+rows.length+' fila(s))';
-        });
-        genTerBtn._bound = true;
-      }
-         
       async function handleFile(file){
         if (!file) return;
         try {
@@ -727,25 +714,31 @@ function renderContabTable(rows){
         }
       }
 
+      // Input file
       if (fileInput && !fileInput._bound){
         fileInput.addEventListener('change', (e) => {
-          const file = e.target.files?.[0];
+          const file = e.target.files && e.target.files[0];
           handleFile(file);
         });
         fileInput._bound = true;
       }
 
+      // Drag & drop
       if (dz && !dz._bound){
-        dz.addEventListener('click', () => { fileInput?.click(); });
+        dz.addEventListener('click', () => {
+          if (fileInput) fileInput.click();
+        });
         dz.addEventListener('dragover', (ev) => {
           ev.preventDefault();
           dz.classList.add('dragover');
         });
-        dz.addEventListener('dragleave', () => { dz.classList.remove('dragover'); });
+        dz.addEventListener('dragleave', () => {
+          dz.classList.remove('dragover');
+        });
         dz.addEventListener('drop', (ev) => {
           ev.preventDefault();
           dz.classList.remove('dragover');
-          const file = ev.dataTransfer?.files?.[0];
+          const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
           handleFile(file);
         });
         dz._bound = true;
@@ -761,7 +754,7 @@ function renderContabTable(rows){
               return;
             }
 
-            // 1) Leer FUENTE y CUENTA_HUESPEDES desde config_general
+            // === 1) CONFIG_GENERAL: fuente y cuenta_huespedes ===
             let fuente = '';
             let cuentaHuesp = '';
             try {
@@ -788,7 +781,7 @@ function renderContabTable(rows){
               } catch (_e) {}
             }
 
-            // 2) Leer cuentas contables (contabilidad_cuentas)
+            // === 2) Cuentas contables ===
             let cuentasRows = [];
             try {
               const resC = await loadCuentasFromSupabase();
@@ -805,19 +798,19 @@ function renderContabTable(rows){
 
             const cuentasMap = {};
             if (Array.isArray(cuentasRows)){
-              cuentasRows.forEach(r => {
+              cuentasRows.forEach((r) => {
                 const code = (r['Codigo de Concepto Opera'] || '').toString().trim();
                 if (code) cuentasMap[code] = r;
               });
             }
 
-            // 3) Construir filas de Transac_Temp_Zeus (2 por cada fila de la tabla)
+            // === 3) Construir Transac_Temp_Zeus ===
             const lines = [];
             let sumPos = 0;
             let sumNeg = 0;
 
-            contabRows.forEach(src => {
-              const fechaRaw   = (src['Fecha'] || '').toString().trim();
+            contabRows.forEach((src) => {
+              const fechaRaw    = (src['Fecha'] || '').toString().trim();
               const fechaDigits = fechaRaw.replace(/[^0-9]/g, '');
               const fecha6      = fechaDigits.slice(0, 6);
               const fechaYMD    = toDateYYYYMMDDSlash(fechaRaw);
@@ -840,35 +833,24 @@ function renderContabTable(rows){
               const montoCol11  = debeNeg ? -1 * monto : monto;
               const montoCol11Str = String(Math.round(montoCol11));
 
-              // Base fila 1: copia de la plantilla (mantiene columnas que NO cambiamos)
+              // Base fila 1: copia de la plantilla
               const base1 = TRANSAC_TEMPLATE_COLS.slice();
 
-              // 1.1 Col 1: primeros 6 de Fecha
-              base1[0]  = fecha6 || '';
-              // 1.2 Col 2: fuente
-              base1[1]  = fuente || '';
-              // 1.3 Col 4: Fecha YYYY/MM/DD
-              base1[3]  = fechaYMD || '';
-              // 1.4 Col 5: Cuenta Contable Zeus
-              base1[4]  = cuentaCont || '';
-              // 1.5 Col 6: ID_Cliente
-              base1[5]  = idCliente || '';
-              // 1.6 Col 7: Folio
-              base1[6]  = folio || '';
-              // 1.7 Col 8: Centro de costo
-              base1[7]  = centroCosto || '';
-              // 1.7 bis Col 10: Nombre_Cargo_Opera
-              base1[9]  = nombreCargo || '';
-              // 1.8 Col 11: monto con signo según cuenta
-              base1[10] = montoCol11Str;
-              // 1.9 Col 17: Tipo_Factura
-              base1[16] = tipoFactura || '';
-              // 1.10 Col 18: Factura
-              base1[17] = numFactura || '';
-              // 1.11 Col 19: Vencimiento_Factura YYYY/MM/DD
-              base1[18] = vencYMD || '';
+              // Regla 1.x
+              base1[0]  = fecha6 || '';          // Col 1
+              base1[1]  = fuente || '';          // Col 2
+              base1[3]  = fechaYMD || '';        // Col 4
+              base1[4]  = cuentaCont || '';      // Col 5
+              base1[5]  = idCliente || '';       // Col 6
+              base1[6]  = folio || '';           // Col 7
+              base1[7]  = centroCosto || '';     // Col 8
+              base1[9]  = nombreCargo || '';     // Col 10
+              base1[10] = montoCol11Str;         // Col 11
+              base1[16] = tipoFactura || '';     // Col 17
+              base1[17] = numFactura || '';      // Col 18
+              base1[18] = vencYMD || '';         // Col 19
 
-              // Acumular sumas para DOCUMENT (fila 1)
+              // Acumular para DOCUMENT
               const n1 = parseToNumber(base1[10]);
               if (n1 > 0) sumPos += n1;
               else if (n1 < 0) sumNeg += n1;
@@ -876,14 +858,13 @@ function renderContabTable(rows){
               const line1 = base1.join(';');
               lines.push(line1);
 
-              // Fila 2 = igual que la primera PERO:
-              // - Col 5 = cuenta_saldo_huespedes_en_casa
-              // - Col 11 = -1 * Col 11
+              // Fila 2: misma fila pero col 5 = cuenta_huespedes, col 11 invertida
               const base2 = base1.slice();
               base2[4] = cuentaHuesp || base1[4];
 
               const n2 = -1 * n1;
-              base2[10] = String(Math.round(n2));
+              const n2Rounded = Math.round(n2);
+              base2[10] = String(n2Rounded);
               if (n2 > 0) sumPos += n2;
               else if (n2 < 0) sumNeg += n2;
 
@@ -896,14 +877,16 @@ function renderContabTable(rows){
               return;
             }
 
-            // 4) Timestamp compartido para ambos archivos
+            // === 4) Timestamp compartido ===
             const now      = new Date();
-            const iso      = now.toISOString(); // 2025-10-30T19:27:12.978Z
-            const [dPart, tPartZ] = iso.split('T'); // ["2025-10-30","19:27:12.978Z"]
-            const tPart    = (tPartZ || '').replace('Z',''); // "19:27:12.978"
+            const iso      = now.toISOString();        // 2025-10-30T19:27:12.978Z
+            const parts    = iso.split('T');
+            const dPart    = parts[0];                 // 2025-10-30
+            const tPartZ   = parts[1] || '';           // 19:27:12.978Z
+            const tPart    = tPartZ.replace('Z','');   // 19:27:12.978
             const ts       = dPart + 'T' + tPart.replace(/:/g,''); // 2025-10-30T192712.978
 
-            // 5) Archivo Transac_Temp_Zeus
+            // === 5) Transac_Temp_Zeus ===
             const contentTransac = lines.join('\n') + '\n';
             {
               const blob = new Blob([contentTransac], { type:'text/plain;charset=utf-8' });
@@ -917,37 +900,27 @@ function renderContabTable(rows){
               URL.revokeObjectURL(url);
             }
 
-            // 6) Archivo Document_Temp_Zeus
+            // === 6) Document_Temp_Zeus ===
             const totalRowsTransac = lines.length;
             const posRounded = Math.round(sumPos);
             const negRounded = Math.round(sumNeg);
 
-            const firstFechaRaw    = (contabRows[0]?.['Fecha'] || '').toString().trim();
+            const firstFechaRaw    = (contabRows[0] && contabRows[0]['Fecha'] || '').toString().trim();
             const firstFechaDigits = firstFechaRaw.replace(/[^0-9]/g, '');
             const docCol1          = firstFechaDigits.slice(0, 6);
             const docCol4          = toDateYYYYMMDDSlash(firstFechaRaw);
 
             const docCols = [];
-            // 1.1 Col 1: primeros 6 de Fecha (primera fila)
-            docCols[0] = docCol1 || '';
-            // 1.2 Col 2: fuente
-            docCols[1] = fuente || '';
-            // 1.3 Col 3: 00NUEVO
-            docCols[2] = '00NUEVO';
-            // 1.4 Col 4: Fecha YYYY/MM/DD (primera fila)
-            docCols[3] = docCol4 || '';
-            // 1.5 Col 5: total filas del Transac_Temp_Zeus
-            docCols[4] = String(totalRowsTransac);
-            // 1.6 Col 6: suma de positivos (Col 11)
-            docCols[5] = String(posRounded);
-            // 1.7 Col 7: suma de negativos (Col 11)
-            docCols[6] = String(negRounded);
-            // 1.8 Col 8: "Contabilizacion Opera"
-            docCols[7] = 'Contabilizacion Opera';
-            // 1.9 Col 9: "123456789"
-            docCols[8] = '123456789';
-            // 1.10 Col 10: fuente
-            docCols[9] = fuente || '';
+            docCols[0] = docCol1 || '';                  // Col 1
+            docCols[1] = fuente || '';                   // Col 2
+            docCols[2] = '00NUEVO';                      // Col 3
+            docCols[3] = docCol4 || '';                  // Col 4
+            docCols[4] = String(totalRowsTransac);       // Col 5
+            docCols[5] = String(posRounded);             // Col 6
+            docCols[6] = String(negRounded);             // Col 7
+            docCols[7] = 'Contabilizacion Opera';        // Col 8
+            docCols[8] = '123456789';                    // Col 9
+            docCols[9] = fuente || '';                   // Col 10
 
             const docLine = docCols.join(';') + '\n';
             {
@@ -970,6 +943,7 @@ function renderContabTable(rows){
         });
         genBtn._bound = true;
       }
+    }
 
 
 
