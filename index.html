@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.20</h1>
+    <h1>Interfaz Opera - Zeus v1.21</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -1398,11 +1398,13 @@ function renderContabTable(rows){
       base[4] = `Simphony_${stamp}_${menuItemName}`;
 
       // Col 13: Codigo de articulo Zeus
-      base[12] = codArticuloZeus;
+      //base[12] = codArticuloZeus;
+      base[9] = codArticuloZeus;
 
       // Col 14: Codigo Bodega Zeus
-      base[13] = codBodegaZeus;
-
+      //base[13] = codBodegaZeus;
+      base[10] = codBodegaZeus;
+      
       // Col 16: Sales Count
       base[15] = salesCount || '0';
 
