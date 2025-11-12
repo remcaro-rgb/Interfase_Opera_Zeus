@@ -42,7 +42,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.19</h1>
+    <h1>Interfaz Opera - Zeus v1.20</h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -209,6 +209,7 @@
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <input id="invFilterInput" type="text" placeholder="Filtrar por texto..." style="max-width:260px;padding:6px 8px;border-radius:6px;border:none;"/>
         <button id="invDownloadCsv" type="button">Descargar tabla Simphony</button>
+        <button id="invGenerateZeus" type="button">Generar Archivo Zeus Inventario</button>
         <span id="invStatus" style="color:#94a3b8"></span>
       </div>
 
@@ -480,7 +481,14 @@ const CONTAB_COLS = [
     let invMidFilteredRows = [];  // resultado de filtro de texto (si aplica)
     let invMidPage = 1;
 
+    // Fecha cruda del archivo Simphony (4ta posición de la primera fila del TXT original)
+    let zeusInvRawFileDate = '';
 
+    // Mapa de artículos cargado desde Supabase (por "Codigo de producto Simphony")
+    let articulosMapBySimphony = null;
+
+    const ZEUS_INV_TEMPLATE_LINE = `1,11,0,2025/10/01,Movimiento Simphony,16,0,0,0,491,01,,0,0,,3,944,,104167,,,,,,,,,,,,,,0,0,0,,0,0,0,0,,0,0,0,,,,0,0,,,,,,,,,`; 
+    const ZEUS_INV_TEMPLATE_COLS = ZEUS_INV_TEMPLATE_LINE.split(',');
     
     // Plantilla base (primera fila de SAMPLE_Transac_Temp) para columnas fijas
     const TRANSAC_TEMPLATE_LINE = '202510;11;00NUEVO;2025/10/28;13050502;204725658;R6028285;;;Desglose 12981600;829407;;;;OTR;;;;2025/10/28;;Excel;30/10/25 20:34;061;;;0;;;0;XA;0;Excel;;;;0;0;0;;;0;11';
@@ -1096,6 +1104,44 @@ function renderContabTable(rows){
       return rows;
     }
 
+    // Normaliza la fecha del archivo Simphony para Zeus Inventario
+    function normalizeZeusInvDate(raw){
+      const digits = (raw || '').replace(/[^0-9]/g, '');
+      if (digits.length >= 8){
+        const y = digits.slice(0, 4);
+        const m = digits.slice(4, 6);
+        const d = digits.slice(6, 8);
+        return {
+          ymd: `${y}/${m}/${d}`,    // para columna 4
+          stamp: `${y}${m}${d}`     // para nombre de archivo
+        };
+      }
+      return {
+        ymd: raw || '',
+        stamp: digits || ''
+      };
+    }
+
+    // Carga y cachea articulos_config desde Supabase, indexando por "Codigo de producto Simphony"
+    async function ensureArticulosMapLoaded(){
+      if (articulosMapBySimphony) return articulosMapBySimphony;
+      try{
+        const res = await loadArticulosFromSupabase();
+        const rows = Array.isArray(res?.rows) ? res.rows : [];
+        const map = {};
+        rows.forEach(r => {
+          const key = (r['Codigo de producto Simphony'] || '').toString().trim();
+          if (!key) return;
+          map[key] = r;
+        });
+        articulosMapBySimphony = map;
+        return map;
+      } catch (e){
+        console.error('No se pudo cargar articulos_config desde Supabase:', e);
+        articulosMapBySimphony = {};
+        return articulosMapBySimphony;
+      }
+    }
 
 
     function renderInvTable(){
@@ -1167,11 +1213,29 @@ function renderContabTable(rows){
       const prevBtn     = document.getElementById('invPrevPage');
       const nextBtn     = document.getElementById('invNextPage');
       const downloadBtn = document.getElementById('invDownloadCsv');
+      const genZeusBtn  = document.getElementById('invGenerateZeus');
 
       async function handleFile(file){
         if (!file) return;
         try{
           const text = await file.text();
+
+          // Obtener la 4ta posición de la primera fila del archivo original (no sólo MID)
+          const rawLines = text
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .split("\n")
+            .map(l => l.trim())
+            .filter(l => l !== '');
+
+          if (rawLines.length){
+            const firstParts = rawLines[0].split('|');
+            zeusInvRawFileDate = (firstParts[3] || '').trim(); // 4a posición (índice 3)
+          } else {
+            zeusInvRawFileDate = '';
+          }
+
+          // Parsear sólo las líneas MID
           invMidRows = parseInventoryMID(text);
           invMidFilteredRows = [];
           invMidPage = 1;
@@ -1182,6 +1246,7 @@ function renderContabTable(rows){
           if (status) status.textContent = 'Error leyendo archivo: ' + err.message;
         }
       }
+
 
       // Input file
       if (fileInput && !fileInput._bound){
@@ -1286,6 +1351,95 @@ function renderContabTable(rows){
         });
         downloadBtn._bound = true;
       }
+
+            // Generar archivo "Movimiento Externo Simphony - Zeus Inventario_<filedate>.txt"
+      if (genZeusBtn && !genZeusBtn._bound){
+        genZeusBtn.addEventListener('click', async () => {
+          const stEl = status;
+          const rows = invMidFilteredRows.length ? invMidFilteredRows : invMidRows;
+
+          if (!rows.length){
+            if (stEl) stEl.textContent = 'No hay filas MID para generar archivo Zeus Inventario.';
+            return;
+          }
+
+          if (!zeusInvRawFileDate){
+            if (stEl) stEl.textContent = 'No se pudo determinar la fecha del archivo original (4ta columna).';
+            return;
+          }
+
+          const { ymd, stamp } = normalizeZeusInvDate(zeusInvRawFileDate);
+          const artMap = await ensureArticulosMapLoaded();
+
+          const outLines = [];
+
+    rows.forEach(row => {
+      const menuItemNumber = (row['Menu Item Number'] || '').toString().trim();
+      const menuItemName   = (row['Menu Item Name']   || '').toString().trim();
+      const salesCount     = (row['Sales Count']      || '0').toString().trim();
+      const salesTotal     = (row['Sales Total']      || '0').toString().trim();
+
+      const artCfg = artMap[menuItemNumber] || {};
+      const codArticuloZeus = (artCfg['Codigo de articulo Zeus'] || '').toString().trim();
+      const codBodegaZeus   = (artCfg['Codigo Bodega Zeus']      || '').toString().trim();
+      const centroCostoZeus = (artCfg['Centro de Costo Zeus']    || '').toString().trim();
+
+      // ⬇️ NUEVO: usar la plantilla EXACTA del archivo ejemplo
+      const base = ZEUS_INV_TEMPLATE_COLS.slice();
+
+      // Asegurar que haya al menos 19 columnas
+      while (base.length < 19) base.push('0');
+
+      // Columnas específicas según tu lógica:
+      // Col 4: fecha archivo en YYYY/MM/DD
+      base[3] = ymd;
+
+      // Col 5: "Simphony_<filedateStamp>_<Menu Item Name>"
+      base[4] = `Simphony_${stamp}_${menuItemName}`;
+
+      // Col 13: Codigo de articulo Zeus
+      base[12] = codArticuloZeus;
+
+      // Col 14: Codigo Bodega Zeus
+      base[13] = codBodegaZeus;
+
+      // Col 16: Sales Count
+      base[15] = salesCount || '0';
+
+      // Col 17: Centro de Costo Zeus
+      base[16] = centroCostoZeus;
+
+      // Col 19: Sales Total
+      base[18] = salesTotal || '0';
+
+      outLines.push(base.join(','));
+    });
+
+
+          if (!outLines.length){
+            if (stEl) stEl.textContent = 'No se generaron filas para el archivo Zeus Inventario.';
+            return;
+          }
+
+          const fileDateStamp = normalizeZeusInvDate(zeusInvRawFileDate).stamp || '00000000';
+          const filename = `Movimiento Externo Simphony - Zeus Inventario_${fileDateStamp}.txt`;
+          const content  = outLines.join('\n');
+
+          const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement('a');
+          a.href     = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          if (stEl) stEl.textContent = `Archivo ${filename} generado (${outLines.length} fila(s)).`;
+        });
+        genZeusBtn._bound = true;
+      }
+
     }
 
     
