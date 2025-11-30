@@ -939,7 +939,18 @@ function renderContabTable(rows){
               const idCliente   = (src['ID_Cliente'] || '').toString().trim();
               const folio       = (src['Folio']      || '').toString().trim();
               const nombreCargo = (src['Nombre_Cargo_Opera'] || '').toString().trim();
-              const tipoFactura = (src['Tipo_Factura']       || '').toString().trim();
+              
+              //TODO: if account starts with "11" asignar "EFE" como forma de pago
+              if (cuentaCont.startsWith('11'))
+              {
+                const tipoFactura = "EFE";
+              }
+              else
+              {
+                const tipoFactura = (src['Tipo_Factura']       || '').toString().trim();
+              }
+              
+              
               const numFactura  = (src['Factura']            || '').toString().trim();
               const vencRaw     = (src['Vencimiento_Factura'] || '').toString().trim();
               const vencYMD     = toDateYYYYMMDDSlash(vencRaw);
