@@ -951,8 +951,11 @@ function renderContabTable(rows){
               const vencYMD     = toDateYYYYMMDDSlash(vencRaw);
 
               const monto       = parseToNumber(src['Monto_Cargo']);
-              const debeNeg     = cuentaCont.startsWith('41') || cuentaCont.startsWith('11') || cuentaCont.startsWith('24');
-              const montoCol11  = debeNeg ? -1 * monto : monto;
+
+              //Define el signo del monto
+              //const debeNeg     = cuentaCont.startsWith('41') || cuentaCont.startsWith('11') || cuentaCont.startsWith('24');
+              const debeNeg     = cuentaCont.startsWith('41') || cuentaCont.startsWith('28150501') || cuentaCont.startsWith('24');
+              const montoCol11  = debeNeg ? -1 * monto : monto;              
               const montoCol11Str = String(Math.round(montoCol11));
 
               // Base fila 1: copia de la plantilla
@@ -971,7 +974,8 @@ function renderContabTable(rows){
               base1[16] = tipoFactura || '';     // Col 17
               base1[17] = numFactura || '';      // Col 18
               base1[18] = vencYMD || '';         // Col 19
-
+    
+              
               // Acumular para DOCUMENT
               const n1 = parseToNumber(base1[10]);
               if (n1 > 0) sumPos += n1;
