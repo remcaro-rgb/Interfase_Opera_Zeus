@@ -265,7 +265,7 @@
     throw new Error('Supabase SDK no inicializado');
   }
 
-  async function saveCuentasToSupabase(rows){https://github.com/remcaro-rgb/Interfase_Opera_Zeus/blob/main/index.html
+  async function saveCuentasToSupabase(rows){
     const client = await initSupabaseIfNeeded();
     const nowIso = new Date().toISOString();
     const payload = [{ id: 1, updated_at: nowIso, rows }];
