@@ -943,7 +943,7 @@ function renderContabTable(rows){
 
               //if account starts with "11" assign "EFE" as pay method
               //const tipoFactura =  (src['Tipo_Factura']       || '').toString().trim();
-              const codMoneda   = (cuentaCfg['Moneda']).toString().trim();
+              const codMoneda   = (cuentaCfg['Moneda']  || '').toString().trim();
               const tipoFactura = (cuentaCont.startsWith('11')) ? codMoneda : ((src['Tipo_Factura']       || '').toString().trim());
               
               //const nombreCargo = (src['Nombre_Cargo_Opera'] || '').toString().trim();
