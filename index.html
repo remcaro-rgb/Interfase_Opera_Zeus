@@ -947,11 +947,8 @@ function renderContabTable(rows){
               const tipoFactura = (cuentaCont.startsWith('11')) ? codMoneda : ((src['Tipo_Factura']       || '').toString().trim());
               
               //const nombreCargo = (src['Nombre_Cargo_Opera'] || '').toString().trim();
-
-              const nombreCargo = (src['Nombre_Cargo_Opera'] || '#' || codMoneda || '-' || src['Col_U'] || '').toString().trim();
-              
-          
-                         
+              const nombreCargo = ((src['Nombre_Cargo_Opera'] || '').toString().trim()) + '#' + codMoneda + '-'  + ((src['Col_U'] || '').toString().trim());
+           
               const numFactura  = (src['Factura']            || '').toString().trim();
               const vencRaw     = (src['Vencimiento_Factura'] || '').toString().trim();
               const vencYMD     = toDateYYYYMMDDSlash(vencRaw);
