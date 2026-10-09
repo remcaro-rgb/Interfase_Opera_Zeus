@@ -76,7 +76,7 @@
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Zeus v1.26</h1>
+    <h1>Interfaz Opera - Satcom -  Zeus v2.0b </h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -215,6 +215,7 @@
       </div>
 
       <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+        <button id="scGenerateContab" type="button">Generar Archivo Contabilizacion Zeus</button>
         <button id="scGenerateTerceros" type="button" style="background:#0ea5e9">Generar Archivo Terceros Zeus</button>
         <span id="scStatus" style="margin-left:6px;color:#94a3b8"></span>
       </div>
@@ -2023,6 +2024,7 @@ function buildTercerosRows(rows){
     function initContabSatcomPage(){
       if (initContabSatcomPage._done) return; initContabSatcomPage._done = true;
       initScTerceros();
+      document.getElementById('scGenerateContab')?.addEventListener('click', scGenerateContab);
       SC_FILES.forEach(f => {
         const load = async file => {
           if (!file) return;
@@ -2160,7 +2162,19 @@ function buildTercerosRows(rows){
       }
 
       let bound = false;
-      return function init(){
+      async function getData(){
+        let rows = null, fields = {};
+        try {
+          const client = await initSupabaseIfNeeded();
+          const { data: all, error } = await client.from(cfg.table).select('id, rows').in('id', [1, 2]);
+          if (error) throw error;
+          const r1 = (all || []).find(r => r.id === 1), r2 = (all || []).find(r => r.id === 2);
+          if (r1 && Array.isArray(r1.rows) && r1.rows.length) rows = r1.rows;
+          if (r2 && r2.rows && !Array.isArray(r2.rows)) fields = r2.rows;
+        } catch (e){ console.warn('getData ' + cfg.table + ':', e); }
+        return {rows: rows || cfg.seed, fields};
+      }
+      const init = function init(){
         if (!bound){
           bound = true;
           const tbody = document.querySelector('#' + P + 'Table tbody');
@@ -2195,6 +2209,8 @@ function buildTercerosRows(rows){
         }
         load();
       };
+      init.getData = getData;
+      return init;
     }
 
     const initCuentasSatcomPage = createSatcomGrid({
@@ -2214,7 +2230,7 @@ function buildTercerosRows(rows){
 
     const initImpuestosSatcomPage = createSatcomGrid({
       prefix:'cs2', table:'satcom_impuestos',
-      cols:[{k:'codigo_contable', label:'Código Contable'}, {k:'nombre_cta', label:'Nombre CTA', wide:true}],
+      cols:[{k:'codigo_contable', label:'Código Contable'}, {k:'nombre_cta', label:'Nombre CTA', wide:true}, {k:'codigo_impuesto', label:'Codigo_Impuesto'}],
       seed: [{"codigo_contable": "13551502", "nombre_cta": "RETENCION EN LA FUENTE ALOJAM. 3,5"}, {"codigo_contable": "13551702", "nombre_cta": "IVA RETENIDO"}, {"codigo_contable": "13551703", "nombre_cta": "RETENCIONES IVA CON CERTIFICADO"}, {"codigo_contable": "13551803", "nombre_cta": "RETENCION ICA MEDELLIN"}, {"codigo_contable": "24080101", "nombre_cta": "IVA GENERADO 19%"}, {"codigo_contable": "24081007", "nombre_cta": "IVA DESCONTABLE DEV. VENTAS 19%"}, {"codigo_contable": "24950201", "nombre_cta": "IMPUESTO AL CONSUMO"}]
     });
 
@@ -2224,6 +2240,135 @@ function buildTercerosRows(rows){
             {k:'codigo_cc', label:'Codigo CC'}, {k:'software', label:'Software'}],
       seed: [{"centro_costos": "VGHM", "nombre_centro_costos": "ALOJAMIENTO- OPERA", "codigo_cc": "", "software": "OPERA"}, {"centro_costos": "TG", "nombre_centro_costos": "RESTAURANTE TRES GENERACIONES", "codigo_cc": "", "software": "SIMPHONY"}, {"centro_costos": "VC", "nombre_centro_costos": "V COFFE", "codigo_cc": "", "software": "SIMPHONY"}]
     });
+
+    // ======== GENERAR CONTABILIZACION ZEUS (SATCOM) ========
+    function scDateParts(raw){
+      const v = String(raw ?? '').trim(); let d = null;
+      if (/^\d+(\.\d+)?$/.test(v) && Number(v) > 20000){            // serial de Excel
+        d = new Date(Date.UTC(1899, 11, 30) + Math.floor(Number(v)) * 86400000);
+      } else {
+        let m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);        // m/d/yyyy [h:mm]
+        if (m){ const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; d = new Date(Date.UTC(y, +m[1]-1, +m[2])); }
+        else if ((m = v.match(/^(\d{4})[-\/](\d{2})[-\/](\d{2})/))) d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
+      }
+      if (!d || isNaN(d.getTime())) return {ymd:'', ym:''};
+      const p2 = n => String(n).padStart(2,'0'), y = d.getUTCFullYear(), mo = p2(d.getUTCMonth()+1);
+      return {ymd: y+'/'+mo+'/'+p2(d.getUTCDate()), ym: String(y)+mo};
+    }
+
+    function scColIdx(g, names, grid){
+      const idx = {}, miss = [];
+      names.forEach(n => { const i = g.cols.findIndex(c => c.trim() === n); if (i < 0) miss.push(grid + ': ' + n); else idx[n] = i; });
+      if (miss.length) throw new Error('Columnas no encontradas -> ' + miss.join(', '));
+      return idx;
+    }
+
+    async function scGenerateContab(){
+      const st = document.getElementById('scStatus');
+      try {
+        const g4 = scGrids.rcol4, g8 = scGrids.rcol8;
+        if (!g4 || !g8){ st.textContent = 'Carga primero los archivos RCOL4 y RCOL8.'; return; }
+        st.textContent = 'Generando...';
+        const c4 = scColIdx(g4, ['Secuencia','CheckMicros','NIT','FechaEmision','TipoDocumento','Total','IVA','IAC','DescripcionFormaPago','DetallePago','ImporteTotal'], 'RCOL4');
+        const c8 = scColIdx(g8, ['Secuencia','CodigoPunto','Codigo','Subtotal'], 'RCOL8');
+
+        // Configuracion (Supabase)
+        let fuente = '';
+        try { const r = await loadGeneralFromSupabase(); if (r && r.data && r.data.fuente) fuente = String(r.data.fuente).trim(); } catch (_e) {}
+        if (!fuente){ try { const o = JSON.parse(localStorage.getItem(GENERAL_KEY) || '{}'); fuente = String(o.fuente || '').trim(); } catch (_e) {} }
+        const [pagos, ingreso, impuestos, centros] = await Promise.all([
+          initPagosSatcomPage.getData(), initCuentasSatcomPage.getData(),
+          initImpuestosSatcomPage.getData(), initCentrosSatcomPage.getData()]);
+        const ctaClientes = (pagos.fields.cuenta_clientes || '').trim();
+        const ctaContado  = (pagos.fields.cuenta_clientes_contado || '').trim();
+        const cta28       = (pagos.fields.cuenta_28_clientes || '').trim();
+        const faltan = [];
+        if (!ctaClientes) faltan.push('Cuenta Clientes');
+        if (!ctaContado)  faltan.push('Cuenta Clientes al contado');
+        if (!cta28)       faltan.push('Cuenta 28 Clientes');
+        if (faltan.length){ st.textContent = 'Falta configurar en Pagos - SATCOM: ' + faltan.join(', '); return; }
+        const ingMap = new Map(ingreso.rows.map(r => [String(r.codigo||'').trim(), String(r.cuenta_puc||'').trim()]));
+        const ccMap  = new Map(centros.rows.map(r => [String(r.centro_costos||'').trim(), String(r.codigo_cc||'').trim()]));
+        const impMap = new Map(impuestos.rows.map(r => [String(r.codigo_impuesto||'').trim().toUpperCase(), String(r.codigo_contable||'').trim()]));
+
+        // RCOL8 agrupado por Secuencia
+        const items = new Map();
+        g8.rows.forEach(r => {
+          const k = String(r[c8.Secuencia] ?? '').trim(); if (!k) return;
+          if (!items.has(k)) items.set(k, []); items.get(k).push(r);
+        });
+
+        const r2 = x => Math.round(x * 100) / 100;
+        const lines = [], miss = new Set(); let sumPos = 0, sumNeg = 0, firstDate = {ymd:'', ym:''};
+        const add = (inv, cuenta, monto, aux, cc) => {
+          const v = r2(monto);
+          const row = TRANSAC_TEMPLATE_COLS.slice();
+          row[0] = inv.fecha.ym; row[1] = fuente; row[3] = inv.fecha.ymd; row[4] = cuenta; row[5] = inv.nit;
+          row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(v);
+          row[16] = 'FC'; row[17] = inv.sec; row[18] = inv.fecha.ymd;
+          if (v > 0) sumPos += v; else if (v < 0) sumNeg += v;
+          lines.push(row.join(';'));
+        };
+
+        g4.rows.forEach(r => {
+          const sec = String(r[c4.Secuencia] ?? '').trim(); if (!sec) return;
+          const tipo = normalizeStr(r[c4.TipoDocumento]);
+          const sg = (tipo.includes('nota') && tipo.includes('credito')) ? -1 : 1;
+          const inv = {sec, nit: String(r[c4.NIT] ?? '').trim(), aux: String(r[c4.CheckMicros] ?? '').trim(), fecha: scDateParts(r[c4.FechaEmision])};
+          if (!firstDate.ymd) firstDate = inv.fecha;
+          const num = k => parseToNumber(r[c4[k]]);
+
+          // Ingresos (RCOL8)
+          (items.get(sec) || []).forEach(it => {
+            const cod = String(it[c8.Codigo] ?? '').trim();
+            const cuenta = ingMap.get(cod);
+            if (!cuenta) miss.add('Cuenta de ingreso para codigo ' + cod);
+            const punto = String(it[c8.CodigoPunto] ?? '').trim();
+            const cc = ccMap.get(punto);
+            if (cc === undefined) miss.add('Centro de costo para punto ' + punto);
+            add(inv, cuenta || '', -1 * sg * parseToNumber(it[c8.Subtotal]), false, cc);
+          });
+          // Impuestos
+          [['IVA','IVA'],['IAC','IAC']].forEach(([cod, col]) => {
+            const monto = num(col); if (!monto) return;
+            const cuenta = impMap.get(cod);
+            if (!cuenta) miss.add('Cuenta de impuesto ' + cod);
+            add(inv, cuenta || '', -1 * sg * monto, false);
+          });
+          // Cliente (Total)
+          add(inv, ctaContado, sg * num('Total'), true);
+          // Pagos
+          const detalle = String(r[c4.DetallePago] ?? '').trim();
+          if (/^direct bill/i.test(detalle)){
+            const m = detalle.match(/^direct bill\s*:\s*([^|]*)/i);
+            const db = sg * parseToNumber(m ? m[1] : '');
+            add(inv, ctaClientes, db, true);
+            let sum = db;
+            String(r[c4.DescripcionFormaPago] ?? '').split('|').filter(x => x.trim()).forEach(pg => {
+              const amt = -1 * sg * parseToNumber(pg.slice(pg.lastIndexOf(':') + 1));
+              add(inv, ctaContado, amt, true); sum += amt;
+            });
+            add(inv, cta28, -1 * sum, true);
+          } else {
+            const it = sg * num('ImporteTotal');
+            add(inv, ctaContado, it, true);
+            add(inv, ctaContado, -1 * it, true);
+            add(inv, cta28, it, true);
+          }
+        });
+
+        if (!lines.length){ st.textContent = 'No hay filas para generar.'; return; }
+        const ts = new Date().toISOString().replace('Z','').replace(/:/g,'').replace('T','T');
+        const doc = [firstDate.ym, fuente, '00NUEVO', firstDate.ymd, String(lines.length), String(r2(sumPos)), String(r2(sumNeg)),
+                     'Contabilizacion Opera', '123456789', fuente].join(';') + '\n';
+        downloadText('Transac_Temp_Zeus - ' + ts + '.txt', lines.join('\n') + '\n');
+        downloadText('Document_Temp_Zeus - ' + ts + '.txt', doc);
+        st.textContent = 'Archivos generados: ' + lines.length + ' fila(s) en Transac_Temp_Zeus y Document_Temp_Zeus.' +
+          (miss.size ? ' Sin mapeo: ' + [...miss].slice(0, 5).join('; ') + (miss.size > 5 ? ' (+' + (miss.size - 5) + ' mas)' : '') : '');
+      } catch (e){
+        console.error(e); st.textContent = 'Error: ' + e.message;
+      }
+    }
 
     // ======== NAV / EVENTOS ========
     const menuItems = document.querySelectorAll('.menu-item');
