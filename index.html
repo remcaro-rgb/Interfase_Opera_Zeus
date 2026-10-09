@@ -9,6 +9,11 @@
     .sidebar {width: 260px; background-color: #111827; border-right: 1px solid #1f2937; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding-top: 24px;}
     .sidebar h2 {color: #22c55e; font-size: 18px; margin: 0 0 20px 20px;}
     .menu-item {padding: 12px 20px; color: #94a3b8; text-decoration: none; display: block; transition: background 0.2s; cursor: pointer;}
+    .menu-group {padding: 14px 20px 8px; color: #e5e7eb; font-size: 20px; font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;}
+    .menu-group:hover {color: #22c55e;}
+    .menu-arrow {display: inline-block; width: 14px; font-size: 16px; color: #22c55e;}
+    .menu-sub.collapsed {display: none;}
+    .menu-sub .menu-item {font-size: 15px; padding-left: 36px;}
     .menu-item:hover, .menu-item.active {background-color: #1e293b; color: #22c55e;}
     .content {margin-left: 260px; padding: 20px; width: calc(100% - 260px);}    
     .card {background: #111827; padding: 20px; border-radius: 10px; border: 1px solid #1f2937; margin-bottom: 20px;}
@@ -23,22 +28,51 @@
     .editable:focus {outline: 2px solid #38bdf8;}
     .drop-zone {margin-top:10px;border:2px dashed #334155;border-radius:10px;padding:20px;text-align:center;color:#94a3b8;background-color:#1e293b;cursor:pointer;}
     .drop-zone.dragover {background-color:#334155;color:#fff;}
+    .sc-files {display:grid;grid-template-columns:220px 1fr auto;gap:8px 10px;align-items:center;}
+    .sc-files .sc-info {color:#64748b;font-size:12px;}
+    .sc-tabs {display:flex;gap:4px;margin-top:16px;border-bottom:1px solid #1f2937;flex-wrap:wrap;}
+    .sc-tab {background:#1e293b;color:#94a3b8;border-radius:6px 6px 0 0;margin:0;}
+    .sc-tab:hover {background:#334155;}
+    .sc-tab.active {background:#22c55e;color:#fff;}
+    .sc-bar {display:flex;gap:10px;align-items:center;margin:10px 0;flex-wrap:wrap;color:#94a3b8;}
+    .sc-bar input[type=search] {width:320px;}
+    .sc-wrap {border-radius:12px;overflow:auto;border:1px solid #1f2937;max-height:65vh;}
+    .sc-wrap table {margin-top:0;white-space:nowrap;font-size:13px;}
+    .sc-wrap th {position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;vertical-align:top;}
+    .sc-wrap th .sc-fil {width:100%;min-width:90px;margin:4px 0 0;padding:4px 6px;font-size:12px;box-sizing:border-box;background:#0f172a;color:#e5e7eb;}
+    .sc-wrap tbody tr:hover {background:#1e293b;}
+    .sc-bar button {margin:0;}
+    .sc-bar button:disabled {background:#334155;cursor:default;}
+    .sc-bar select {background:#1e293b;color:#e5e7eb;border:1px solid #334155;border-radius:6px;padding:6px;}
   </style>
   <!-- Supabase CDN (v2) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SheetJS para leer .xlsx -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="sidebar">
     <h2>Menú</h2>
-    <div class="menu-item" data-section="usuarios" style="display:none">Usuarios</div>
-    <div class="menu-item" data-section="clientes" style="display:none">Configuración de Clientes</div>
-    <div class="menu-item" data-section="configgeneral">Configuracion General</div>
-    <div class="menu-item" data-section="cuentas">Configuración de Cuentas Contables</div>
-    <div class="menu-item" data-section="articulos">Configuración de Artículos</div>
-    <div class="menu-item" data-section="ventas" style="display:none">Contabilizar Ventas</div>
-    <div class="menu-item" data-section="contabilizacion">Contabilización</div>
-    <div class="menu-item" data-section="inventario">Generar Archivo de Inventario</div>
-    <div class="menu-item" data-section="login" style="display:none">Iniciar Sesión</div>
+    <div class="menu-group" data-group="OPERA"><span class="menu-arrow">▾</span> OPERA</div>
+    <div class="menu-sub" id="menuSub_OPERA">
+      <div class="menu-item" data-section="usuarios" style="display:none">Usuarios</div>
+      <div class="menu-item" data-section="clientes" style="display:none">Configuración de Clientes</div>
+      <div class="menu-item" data-section="configgeneral">Configuracion General</div>
+      <div class="menu-item" data-section="cuentas">Configuración de Cuentas Contables</div>
+      <div class="menu-item" data-section="articulos">Configuración de Artículos</div>
+      <div class="menu-item" data-section="ventas" style="display:none">Contabilizar Ventas</div>
+      <div class="menu-item" data-section="contabilizacion">Contabilización</div>
+      <div class="menu-item" data-section="inventario">Generar Archivo de Inventario</div>
+      <div class="menu-item" data-section="login" style="display:none">Iniciar Sesión</div>
+    </div>
+    <div class="menu-group" data-group="SATCOM"><span class="menu-arrow">▾</span> SATCOM</div>
+    <div class="menu-sub" id="menuSub_SATCOM">
+      <div class="menu-item" data-section="contabsatcom">Contabilizacion SATCOM</div>
+      <div class="menu-item" data-section="cuentassatcom">Configuracion de Cuentas de Ingreso - SATCOM</div>
+      <div class="menu-item" data-section="pagossatcom">Configuracion de Pagos - SATCOM</div>
+      <div class="menu-item" data-section="impuestossatcom">Configuracion de Impuestos - SATCOM</div>
+      <div class="menu-item" data-section="centrossatcom">Configuracion de Centros de Costo - SATCOM</div>
+    </div>
   </div>
 
   <div class="content">
@@ -153,6 +187,133 @@
       <span id="contabStatus" style="margin-left:6px;color:#94a3b8"></span>
     </div>
 
+    </section>
+
+    <!-- Contabilizacion SATCOM -->
+    <section id="contabsatcom" class="card hidden">
+      <h2>Contabilizacion SATCOM</h2>
+      <div class="note" style="color:#94a3b8;margin-bottom:8px">
+        Carga los 4 archivos Excel (.xlsx) de facturación electrónica y terceros. Al cargar cada uno se crea su pestaña.
+      </div>
+
+      <div class="sc-files">
+        <label for="scFile_rcol6" style="color:#94a3b8">RCOL6 - Terceros</label>
+        <div class="drop-zone sc-drop" data-key="scFile_rcol6" style="margin:0;padding:8px 12px;"><small>Arrastra el archivo aquí o</small> <input id="scFile_rcol6" type="file" accept=".xlsx,.xlsm,.xls" style="width:auto;margin:0;" /></div>
+        <span class="sc-info" id="scInfo_rcol6">Sin cargar</span>
+
+        <label for="scFile_rcol3" style="color:#94a3b8">RCOL3 - Terceros</label>
+        <div class="drop-zone sc-drop" data-key="scFile_rcol3" style="margin:0;padding:8px 12px;"><small>Arrastra el archivo aquí o</small> <input id="scFile_rcol3" type="file" accept=".xlsx,.xlsm,.xls" style="width:auto;margin:0;" /></div>
+        <span class="sc-info" id="scInfo_rcol3">Sin cargar</span>
+
+        <label for="scFile_rcol4" style="color:#94a3b8">RCOL4 - Facturación</label>
+        <div class="drop-zone sc-drop" data-key="scFile_rcol4" style="margin:0;padding:8px 12px;"><small>Arrastra el archivo aquí o</small> <input id="scFile_rcol4" type="file" accept=".xlsx,.xlsm,.xls" style="width:auto;margin:0;" /></div>
+        <span class="sc-info" id="scInfo_rcol4">Sin cargar</span>
+
+        <label for="scFile_rcol8" style="color:#94a3b8">RCOL8 - Facturación</label>
+        <div class="drop-zone sc-drop" data-key="scFile_rcol8" style="margin:0;padding:8px 12px;"><small>Arrastra el archivo aquí o</small> <input id="scFile_rcol8" type="file" accept=".xlsx,.xlsm,.xls" style="width:auto;margin:0;" /></div>
+        <span class="sc-info" id="scInfo_rcol8">Sin cargar</span>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+        <button id="scGenerateTerceros" type="button" style="background:#0ea5e9">Generar Archivo Terceros Zeus</button>
+        <span id="scStatus" style="margin-left:6px;color:#94a3b8"></span>
+      </div>
+
+      <div id="scTabs" class="sc-tabs"></div>
+      <div id="scPanels"></div>
+    </section>
+
+    <!-- Configuracion de Cuentas de Ingreso - SATCOM -->
+    <section id="cuentassatcom" class="card hidden">
+      <h2>Configuracion de Cuentas de Ingreso - SATCOM</h2>
+      <div class="note" style="color:#94a3b8;margin-bottom:8px">
+        Mapeo de productos a cuentas Zeus. Haz clic en un encabezado para ordenar; usa los filtros bajo cada columna. Edita directamente en las celdas.
+      </div>
+      <div class="sc-bar">
+        <button id="csSave" type="button">Guardar</button>
+        <span id="csStatus" style="color:#94a3b8"></span>
+      </div>
+      <div class="sc-bar">
+        <input type="search" id="csSearch" placeholder="Buscar en todas las columnas..." />
+        <button type="button" id="csClear" style="background:#475569">Limpiar filtros</button>
+        <button type="button" id="csAdd">+ Agregar fila</button>
+        <button type="button" id="csSeed" style="background:#475569">Cargar datos del archivo</button>
+        <span class="sc-count" id="csCount"></span>
+      </div>
+      <div class="sc-wrap" id="csWrap">
+        <table id="csTable"><thead></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- Configuracion de Pagos - SATCOM -->
+    <section id="pagossatcom" class="card hidden">
+      <h2>Configuracion de Pagos - SATCOM</h2>
+      <div class="note" style="color:#94a3b8;margin-bottom:8px">
+        Mapeo de medios de pago a cuentas contables. Haz clic en un encabezado para ordenar; usa los filtros bajo cada columna. Edita directamente en las celdas.
+      </div>
+      <div class="sc-bar" style="align-items:flex-end">
+        <label style="color:#94a3b8">Cuenta Clientes<input id="cpF_cuenta_clientes" class="cs-field" data-k="cuenta_clientes" type="text" style="display:block;width:180px;margin:4px 0 0" /></label>
+        <label style="color:#94a3b8">Cuenta Clientes al contado<input id="cpF_cuenta_clientes_contado" class="cs-field" data-k="cuenta_clientes_contado" type="text" style="display:block;width:180px;margin:4px 0 0" /></label>
+        <label style="color:#94a3b8">Cuenta 28 Clientes<input id="cpF_cuenta_28_clientes" class="cs-field" data-k="cuenta_28_clientes" type="text" style="display:block;width:180px;margin:4px 0 0" /></label>
+      </div>
+      <div class="sc-bar">
+        <button id="cpSave" type="button">Guardar</button>
+        <span id="cpStatus" style="color:#94a3b8"></span>
+      </div>
+      <div class="sc-bar">
+        <input type="search" id="cpSearch" placeholder="Buscar en todas las columnas..." />
+        <button type="button" id="cpClear" style="background:#475569">Limpiar filtros</button>
+        <button type="button" id="cpAdd">+ Agregar fila</button>
+        <button type="button" id="cpSeed" style="background:#475569">Cargar datos del archivo</button>
+        <span class="sc-count" id="cpCount"></span>
+      </div>
+      <div class="sc-wrap" id="cpWrap">
+        <table id="cpTable"><thead></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- Configuracion de Impuestos - SATCOM -->
+    <section id="impuestossatcom" class="card hidden">
+      <h2>Configuracion de Impuestos - SATCOM</h2>
+      <div class="note" style="color:#94a3b8;margin-bottom:8px">
+        Cuentas contables de impuestos. Haz clic en un encabezado para ordenar; usa los filtros bajo cada columna. Edita directamente en las celdas.
+      </div>
+      <div class="sc-bar">
+        <button id="cs2Save" type="button">Guardar</button>
+        <span id="cs2Status" style="color:#94a3b8"></span>
+      </div>
+      <div class="sc-bar">
+        <input type="search" id="cs2Search" placeholder="Buscar en todas las columnas..." />
+        <button type="button" id="cs2Clear" style="background:#475569">Limpiar filtros</button>
+        <button type="button" id="cs2Add">+ Agregar fila</button>
+        <button type="button" id="cs2Seed" style="background:#475569">Cargar datos del archivo</button>
+        <span class="sc-count" id="cs2Count"></span>
+      </div>
+      <div class="sc-wrap" id="cs2Wrap">
+        <table id="cs2Table"><thead></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- Configuracion de Centros de Costo - SATCOM -->
+    <section id="centrossatcom" class="card hidden">
+      <h2>Configuracion de Centros de Costo - SATCOM</h2>
+      <div class="note" style="color:#94a3b8;margin-bottom:8px">
+        Centros de costo por software de origen. Haz clic en un encabezado para ordenar; usa los filtros bajo cada columna. Edita directamente en las celdas.
+      </div>
+      <div class="sc-bar">
+        <button id="cs3Save" type="button">Guardar</button>
+        <span id="cs3Status" style="color:#94a3b8"></span>
+      </div>
+      <div class="sc-bar">
+        <input type="search" id="cs3Search" placeholder="Buscar en todas las columnas..." />
+        <button type="button" id="cs3Clear" style="background:#475569">Limpiar filtros</button>
+        <button type="button" id="cs3Add">+ Agregar fila</button>
+        <button type="button" id="cs3Seed" style="background:#475569">Cargar datos del archivo</button>
+        <span class="sc-count" id="cs3Count"></span>
+      </div>
+      <div class="sc-wrap" id="cs3Wrap">
+        <table id="cs3Table"><thead></thead><tbody></tbody></table>
+      </div>
     </section>
 
     <!-- Artículos -->
@@ -1539,11 +1700,11 @@ function buildTercerosRows(rows){
     const tel = safeField(r['Telefono_Cliente']);
     const pais = safeField(r['Pais_Cliente']);
 
-    const jn = (tipoDoc === '11') ? 'J' : 'N';
+    const jn = (tipoDoc === '11' || tipoDoc === '31') ? 'J' : 'N';
     let docType = '';
     if (tipoDoc === '13') docType = 'CC';
     else if (tipoDoc === '41') docType = 'PAP';
-    else if (tipoDoc === '11') docType = 'NIT';
+    else if (tipoDoc === '11' || tipoDoc === '31') docType = 'NIT';
 
     const iso = toISO2Country(pais);
 
@@ -1678,8 +1839,400 @@ function buildTercerosRows(rows){
       }
     }
 
+    // ======== CONTABILIZACION SATCOM ========
+    const SC_FILES = [
+      {key:'rcol6', label:'RCOL6 - Terceros'},
+      {key:'rcol3', label:'RCOL3 - Terceros'},
+      {key:'rcol4', label:'RCOL4 - Facturación'},
+      {key:'rcol8', label:'RCOL8 - Facturación'}
+    ];
+    const scGrids = {};
+
+    function scEsc(v){ return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // Detecta la fila de encabezado: la primera fila (de las 30 primeras) con casi el máximo de celdas con texto
+    function scParseSheet(ws){
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:'', blankrows:false});
+      const lim = Math.min(aoa.length, 30);
+      const cnt = i => aoa[i].reduce((n,c) => n + (String(c).trim() !== '' ? 1 : 0), 0);
+      let max = 0; for (let i=0;i<lim;i++) max = Math.max(max, cnt(i));
+      let h = 0; for (let i=0;i<lim;i++){ if (cnt(i) >= Math.max(2, max*0.8)) { h = i; break; } }
+      const head = aoa[h] || [];
+      const rows = aoa.slice(h+1);
+      const used = new Set();
+      const idx = [], cols = [];
+      head.forEach((c,i) => {
+        const hasData = rows.some(r => String(r[i] ?? '').trim() !== '');
+        const name = String(c).trim();
+        if (!name && !hasData) return;
+        let n = name || ('Col ' + (i+1)), k = n, j = 2;
+        while (used.has(k)) k = n + ' (' + (j++) + ')';
+        used.add(k); idx.push(i); cols.push(k);
+      });
+      return {cols, rows: rows.map(r => idx.map(i => r[i] ?? ''))};
+    }
+
+    function scCreateGrid(key, label, cols, rows){
+      const old = scGrids[key];
+      let tabBtn = document.getElementById('scTab_' + key), panel = document.getElementById('scPanel_' + key);
+      if (!tabBtn){
+        tabBtn = document.createElement('button'); tabBtn.type='button'; tabBtn.id='scTab_'+key; tabBtn.className='sc-tab';
+        tabBtn.addEventListener('click', () => scActivate(key));
+        document.getElementById('scTabs').appendChild(tabBtn);
+        panel = document.createElement('div'); panel.id='scPanel_'+key; panel.className='hidden';
+        document.getElementById('scPanels').appendChild(panel);
+      }
+      tabBtn.textContent = label + ' (' + rows.length.toLocaleString('es-CO') + ')';
+      panel.innerHTML =
+        '<div class="sc-bar">' +
+          '<input type="search" class="sc-search" placeholder="Buscar en todas las columnas..." />' +
+          '<button type="button" class="sc-clear" style="background:#475569">Limpiar filtros</button>' +
+          '<span class="sc-count"></span>' +
+          '<span style="margin-left:auto">Filas por página</span>' +
+          '<select class="sc-size"><option>25</option><option selected>50</option><option>100</option><option>250</option></select>' +
+          '<button type="button" class="sc-first">«</button><button type="button" class="sc-prev">‹</button>' +
+          '<span class="sc-page"></span>' +
+          '<button type="button" class="sc-next">›</button><button type="button" class="sc-last">»</button>' +
+        '</div>' +
+        '<div class="sc-wrap"><table><thead></thead><tbody></tbody></table></div>';
+      const g = {cols, rows, lower: null, filters: cols.map(() => ''), search:'', sortCol:-1, sortDir:1, page:0, size:50, view:[], panel};
+      scGrids[key] = g;
+      const q = s => panel.querySelector(s);
+      const thead = q('thead');
+      thead.innerHTML = '<tr>' + cols.map((c,i) =>
+        '<th data-i="'+i+'"><span class="sc-name">'+scEsc(c)+'</span><span class="sc-arrow"></span><br/><input class="sc-fil" data-i="'+i+'" placeholder="Filtrar" /></th>').join('') + '</tr>';
+      let timer;
+      const deb = fn => { clearTimeout(timer); timer = setTimeout(fn, 200); };
+      thead.querySelectorAll('.sc-fil').forEach(inp => {
+        inp.addEventListener('click', e => e.stopPropagation());
+        inp.addEventListener('input', () => deb(() => { g.filters[+inp.dataset.i] = inp.value.trim().toLowerCase(); g.page=0; scRender(g); }));
+      });
+      thead.querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
+        const i = +th.dataset.i;
+        if (g.sortCol === i) g.sortDir = -g.sortDir; else { g.sortCol = i; g.sortDir = 1; }
+        scRender(g);
+      }));
+      q('.sc-search').addEventListener('input', e => deb(() => { g.search = e.target.value.trim().toLowerCase(); g.page=0; scRender(g); }));
+      q('.sc-clear').addEventListener('click', () => {
+        g.filters = cols.map(() => ''); g.search=''; g.page=0;
+        panel.querySelectorAll('.sc-fil').forEach(i => i.value=''); q('.sc-search').value='';
+        scRender(g);
+      });
+      q('.sc-size').addEventListener('change', e => { g.size = +e.target.value; g.page=0; scRender(g); });
+      q('.sc-first').addEventListener('click', () => { g.page=0; scRender(g); });
+      q('.sc-prev').addEventListener('click', () => { g.page=Math.max(0,g.page-1); scRender(g); });
+      q('.sc-next').addEventListener('click', () => { g.page++; scRender(g); });
+      q('.sc-last').addEventListener('click', () => { g.page=1e9; scRender(g); });
+      scRender(g);
+      scActivate(key);
+    }
+
+    function scActivate(key){
+      Object.keys(scGrids).forEach(k => {
+        document.getElementById('scPanel_'+k).classList.toggle('hidden', k !== key);
+        document.getElementById('scTab_'+k).classList.toggle('active', k === key);
+      });
+    }
+
+    function scRender(g){
+      if (!g.lower) g.lower = g.rows.map(r => r.map(c => String(c).toLowerCase()));
+      const fl = g.filters.map((f,i) => [i,f]).filter(x => x[1]);
+      const ids = [];
+      for (let r=0; r<g.rows.length; r++){
+        const l = g.lower[r];
+        if (g.search && !l.some(c => c.includes(g.search))) continue;
+        if (fl.some(([i,f]) => !l[i].includes(f))) continue;
+        ids.push(r);
+      }
+      if (g.sortCol >= 0){
+        const c = g.sortCol, d = g.sortDir;
+        const num = v => { const s = String(v).trim(); if (s==='') return NaN; const n = Number(s.replace(/,/g,'')); return n; };
+        ids.sort((a,b) => {
+          const x = g.rows[a][c], y = g.rows[b][c], nx = num(x), ny = num(y);
+          if (!isNaN(nx) && !isNaN(ny)) return (nx-ny)*d;
+          if (x === '' && y !== '') return 1; if (y === '' && x !== '') return -1;
+          return String(x).localeCompare(String(y), 'es', {numeric:true, sensitivity:'base'})*d;
+        });
+      }
+      const pages = Math.max(1, Math.ceil(ids.length / g.size));
+      g.page = Math.min(Math.max(0, g.page), pages-1);
+      const slice = ids.slice(g.page*g.size, (g.page+1)*g.size);
+      const p = g.panel, q = s => p.querySelector(s);
+      q('tbody').innerHTML = slice.map(r => '<tr>' + g.rows[r].map(c => '<td>'+scEsc(c)+'</td>').join('') + '</tr>').join('')
+        || '<tr><td colspan="'+g.cols.length+'" style="text-align:center;color:#64748b">Sin resultados</td></tr>';
+      q('.sc-count').textContent = ids.length.toLocaleString('es-CO') + ' de ' + g.rows.length.toLocaleString('es-CO') + ' filas';
+      q('.sc-page').textContent = 'Página ' + (g.page+1) + ' de ' + pages;
+      q('.sc-first').disabled = q('.sc-prev').disabled = g.page === 0;
+      q('.sc-next').disabled = q('.sc-last').disabled = g.page >= pages-1;
+      p.querySelectorAll('th').forEach(th => {
+        th.querySelector('.sc-arrow').textContent = (+th.dataset.i === g.sortCol) ? (g.sortDir===1 ? ' ▲' : ' ▼') : '';
+      });
+    }
+
+    // Une RCOL3 + RCOL6 y genera Terceros_Zeus.txt con la misma estructura de Contabilizacion
+    const SC_TIPO_DOC_TXT = {
+      'pasaporte':'41', 'cedula de ciudadania':'13', 'nit':'31',
+      'documento de identificacion extranjero':'42', 'cedula de extranjeria':'22',
+      'tarjeta de extranjeria':'21', 'nit de otro pais':'50'
+    };
+    // Columnas reales de cada reporte -> campos de buildTercerosRows
+    const SC_TER_MAP = {
+      rcol6: {ID_Cliente:'Identificacion', Nombre_Cliente:'NombresCompletos', Tipo_Documento_Cliente:'TipoDocumento',
+              Direccion_Cliente:'Direccion', Telefono_Cliente:'Telefono'},
+      rcol3: {ID_Cliente:'No ident.fis.1', Nombre_Cliente:'Nombre', Tipo_Documento_Cliente:'Cod. Tipo ID.', Pais_Cliente:'Pais'}
+    };
+    function scTerceroRows(key){
+      const g = scGrids[key], map = SC_TER_MAP[key], missing = [];
+      const idx = {};
+      Object.keys(map).forEach(f => {
+        const i = g.cols.findIndex(c => c.trim() === map[f]);
+        if (i < 0) missing.push(key.toUpperCase() + ': ' + map[f]); else idx[f] = i;
+      });
+      const rows = g.rows.map(r => {
+        const o = {}; Object.keys(idx).forEach(f => o[f] = String(r[idx[f]] ?? '').trim());
+        if (o.Tipo_Documento_Cliente) o.Tipo_Documento_Cliente = SC_TIPO_DOC_TXT[normalizeStr(o.Tipo_Documento_Cliente)] || o.Tipo_Documento_Cliente;
+        return o;
+      });
+      return {rows, missing};
+    }
+    function initScTerceros(){
+      const btn = document.getElementById('scGenerateTerceros');
+      if (!btn || btn._bound) return;
+      btn.addEventListener('click', () => {
+        const st = document.getElementById('scStatus');
+        if (!scGrids.rcol3 || !scGrids.rcol6){ st.textContent = 'Carga primero los archivos RCOL3 y RCOL6.'; return; }
+        const missing = [], merged = new Map();
+        ['rcol6','rcol3'].forEach(k => {
+          const t = scTerceroRows(k); missing.push(...t.missing);
+          t.rows.forEach(r => {
+            const id = (r.ID_Cliente||'').trim(); if (!id) return;
+            const prev = merged.get(id);
+            if (!prev) merged.set(id, r);
+            else Object.keys(r).forEach(f => { if (!prev[f] && r[f]) prev[f] = r[f]; });
+          });
+        });
+        if (missing.length){ st.textContent = 'Columnas no encontradas: ' + missing.join(', '); return; }
+        const rows = buildTercerosRows([...merged.values()]);
+        if (!rows.length){ st.textContent = 'No hay filas válidas.'; return; }
+        downloadText('Terceros_Zeus.txt', rows.map(r => r.join(';')).join('\n'));
+        st.textContent = 'Generado Terceros_Zeus.txt (' + rows.length + ' fila(s))';
+      });
+      btn._bound = true;
+    }
+
+    function initContabSatcomPage(){
+      if (initContabSatcomPage._done) return; initContabSatcomPage._done = true;
+      initScTerceros();
+      SC_FILES.forEach(f => {
+        const load = async file => {
+          if (!file) return;
+          const info = document.getElementById('scInfo_'+f.key);
+          try {
+            info.textContent = 'Leyendo ' + file.name + '... (puede tardar con archivos grandes)';
+            await new Promise(r => setTimeout(r, 30));
+            const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:false});
+            const {cols, rows} = scParseSheet(wb.Sheets[wb.SheetNames[0]]);
+            scCreateGrid(f.key, f.label, cols, rows);
+            info.textContent = file.name + ' · hoja "' + wb.SheetNames[0] + '" · ' + rows.length.toLocaleString('es-CO') + ' filas, ' + cols.length + ' columnas';
+          } catch (err) {
+            console.error(err); info.textContent = 'Error al leer ' + file.name + ': ' + err.message;
+          }
+        };
+        const inp = document.getElementById('scFile_'+f.key);
+        inp?.addEventListener('change', e => load(e.target.files[0]));
+        const dz = inp?.closest('.sc-drop');
+        if (dz){
+          ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+          ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+          dz.addEventListener('drop', e => load(e.dataTransfer.files[0]));
+        }
+      });
+    }
+
+    // ======== GRIDS EDITABLES SATCOM (Cuentas / Pagos) ========
+    // Tablas esperadas en Supabase (id integer primary key, updated_at timestamptz, rows jsonb):
+    //   public.satcom_cuentas, public.satcom_pagos
+    function csFmtGmt5(iso){
+      const d = new Date(iso); if (isNaN(d.getTime())) return iso;
+      const t = new Date(d.getTime() - 5*3600*1000), p2 = n => String(n).padStart(2,'0');
+      return t.getUTCFullYear()+'-'+p2(t.getUTCMonth()+1)+'-'+p2(t.getUTCDate())+' '+p2(t.getUTCHours())+':'+p2(t.getUTCMinutes());
+    }
+
+    function createSatcomGrid(cfg){
+      const P = cfg.prefix, COLS = cfg.cols;
+      const $ = id => document.getElementById(P + id);
+      const g = {rows:[], filters:{}, search:'', sortKey:null, sortDir:1, nextId:1};
+
+      function loadRows(arr){
+        g.nextId = 1;
+        g.rows = (arr||[]).map(r => { const o = {_id: g.nextId++}; COLS.forEach(c => o[c.k] = String(r[c.k] ?? '')); return o; });
+      }
+      function getFields(){
+        const o = {};
+        document.querySelectorAll('#' + cfg.sectionId + ' .cs-field').forEach(i => o[i.dataset.k] = i.value.trim());
+        return o;
+      }
+      function setFields(o){
+        document.querySelectorAll('#' + cfg.sectionId + ' .cs-field').forEach(i => i.value = (o && o[i.dataset.k]) || '');
+      }
+      function resetFilters(){
+        g.filters = {}; g.search = '';
+        $('Search').value = '';
+        document.querySelectorAll('#' + P + 'Table .sc-fil').forEach(i => i.value = '');
+      }
+
+      function render(){
+        const thead = document.querySelector('#' + P + 'Table thead'), tbody = document.querySelector('#' + P + 'Table tbody');
+        if (!thead.firstChild){
+          thead.innerHTML = '<tr>' + COLS.map(c =>
+            '<th data-k="'+c.k+'"><span>'+c.label+'</span><span class="cs-arrow"></span><br/><input class="sc-fil" data-k="'+c.k+'" placeholder="Filtrar" /></th>').join('') + '<th style="cursor:default">Acciones</th></tr>';
+          thead.querySelectorAll('.sc-fil').forEach(inp => {
+            inp.addEventListener('click', e => e.stopPropagation());
+            inp.addEventListener('input', () => { g.filters[inp.dataset.k] = inp.value.trim().toLowerCase(); render(); });
+          });
+          thead.querySelectorAll('th[data-k]').forEach(th => th.addEventListener('click', () => {
+            const k = th.dataset.k;
+            if (g.sortKey === k) g.sortDir = -g.sortDir; else { g.sortKey = k; g.sortDir = 1; }
+            render();
+          }));
+        }
+        thead.querySelectorAll('th[data-k]').forEach(th => {
+          th.querySelector('.cs-arrow').textContent = th.dataset.k === g.sortKey ? (g.sortDir === 1 ? ' ▲' : ' ▼') : '';
+        });
+        const fl = Object.entries(g.filters).filter(e => e[1]);
+        let view = g.rows.filter(r =>
+          (!g.search || COLS.some(c => r[c.k].toLowerCase().includes(g.search))) &&
+          fl.every(([k,f]) => r[k].toLowerCase().includes(f)));
+        if (g.sortKey){
+          const k = g.sortKey, d = g.sortDir;
+          view = view.slice().sort((a,b) => {
+            if (a[k] === '' && b[k] !== '') return 1; if (b[k] === '' && a[k] !== '') return -1;
+            return a[k].localeCompare(b[k], 'es', {numeric:true, sensitivity:'base'}) * d;
+          });
+        }
+        tbody.innerHTML = view.map(r =>
+          '<tr data-id="'+r._id+'">' + COLS.map(c =>
+            '<td><input class="cs-cell" data-k="'+c.k+'" value="'+scEsc(r[c.k]).replace(/"/g,'&quot;')+'" style="width:100%;min-width:'+(c.wide?260:110)+'px;margin:0;padding:4px 6px;font-size:13px;box-sizing:border-box;" /></td>').join('') +
+          '<td><button type="button" class="cs-del" style="background:#dc2626;margin:0;padding:4px 10px">Eliminar</button></td></tr>').join('')
+          || '<tr><td colspan="'+(COLS.length+1)+'" style="text-align:center;color:#64748b">Sin resultados</td></tr>';
+        $('Count').textContent = view.length.toLocaleString('es-CO') + ' de ' + g.rows.length.toLocaleString('es-CO') + ' filas';
+      }
+
+      async function load(){
+        const st = $('Status');
+        try {
+          const client = await initSupabaseIfNeeded();
+          const { data: all, error } = await client.from(cfg.table).select('id, rows, updated_at').in('id', [1, 2]);
+          if (error && error.code !== 'PGRST116') throw error;
+          const data = (all || []).find(r => r.id === 1);
+          const extra = (all || []).find(r => r.id === 2);
+          if (cfg.hasFields) setFields(extra && extra.rows && !Array.isArray(extra.rows) ? extra.rows : {});
+          if (data && Array.isArray(data.rows) && data.rows.length){
+            loadRows(data.rows);
+            st.textContent = 'Datos cargados' + (data.updated_at ? ' en ' + csFmtGmt5(data.updated_at) : '');
+          } else {
+            loadRows(cfg.seed);
+            st.textContent = 'Supabase sin datos: se cargó el archivo (' + g.rows.length + ' filas). Presiona Guardar para publicarlo.';
+          }
+        } catch (e){
+          console.error('Error cargando ' + cfg.table + ':', e);
+          loadRows(cfg.seed);
+          st.textContent = 'No se pudo leer Supabase (' + (e.message || e) + '). Se cargó el archivo local.';
+        }
+        render();
+      }
+
+      async function save(){
+        const st = $('Status');
+        const rows = g.rows.map(r => { const o = {}; COLS.forEach(c => o[c.k] = r[c.k].trim()); return o; });
+        try {
+          const client = await initSupabaseIfNeeded();
+          const nowIso = new Date().toISOString();
+          const payload = [{id:1, updated_at: nowIso, rows}];
+          if (cfg.hasFields) payload.push({id:2, updated_at: nowIso, rows: getFields()});
+          const { error } = await client.from(cfg.table).upsert(payload, {onConflict:'id'});
+          if (error) throw error;
+          st.textContent = 'Guardado en Supabase (' + rows.length + ' filas) · ' + formatTimestamp(nowIso);
+        } catch (e){
+          console.error('Error guardando ' + cfg.table + ':', e);
+          st.textContent = 'Error al guardar en Supabase: ' + (e.message || e);
+        }
+      }
+
+      let bound = false;
+      return function init(){
+        if (!bound){
+          bound = true;
+          const tbody = document.querySelector('#' + P + 'Table tbody');
+          tbody.addEventListener('input', e => {
+            const inp = e.target.closest('.cs-cell'); if (!inp) return;
+            const row = g.rows.find(r => r._id === +inp.closest('tr').dataset.id);
+            if (row) row[inp.dataset.k] = inp.value;
+          });
+          tbody.addEventListener('click', e => {
+            const b = e.target.closest('.cs-del'); if (!b) return;
+            const id = +b.closest('tr').dataset.id;
+            if (!confirm('¿Eliminar esta fila?')) return;
+            g.rows = g.rows.filter(r => r._id !== id);
+            render();
+          });
+          $('Search').addEventListener('input', e => { g.search = e.target.value.trim().toLowerCase(); render(); });
+          $('Clear').addEventListener('click', () => { resetFilters(); render(); });
+          $('Add').addEventListener('click', () => {
+            resetFilters(); g.sortKey = null;
+            const o = {_id: g.nextId++}; COLS.forEach(c => o[c.k] = '');
+            g.rows.unshift(o);
+            render();
+            $('Wrap').scrollTop = 0;
+            tbody.querySelector('.cs-cell')?.focus();
+          });
+          $('Seed').addEventListener('click', () => {
+            if (!confirm('Esto reemplaza los datos de la tabla por los del archivo (sin guardar en Supabase hasta presionar Guardar). ¿Continuar?')) return;
+            loadRows(cfg.seed); render();
+            $('Status').textContent = 'Archivo cargado (' + g.rows.length + ' filas). Presiona Guardar para publicarlo.';
+          });
+          $('Save').addEventListener('click', save);
+        }
+        load();
+      };
+    }
+
+    const initCuentasSatcomPage = createSatcomGrid({
+      prefix:'cs', table:'satcom_cuentas',
+      cols:[
+        {k:'producto', label:'Producto', wide:true}, {k:'codigo', label:'Codigo'}, {k:'cod_zeus', label:'Cod zeus'},
+        {k:'cuenta_puc', label:'Cuenta PUC'}, {k:'nombre_cuenta', label:'Nombre cuenta', wide:true}],
+      seed: [{"producto":"Propina","codigo":"SERVICIO1","cod_zeus":"SERVICIO1","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"ACCOMMODATION","codigo":"0001","cod_zeus":"0001","cuenta_puc":"41401001","nombre_cuenta":"ALOJAMIENTO GRAVADO 19%"},{"producto":"MISCELLANEOUS","codigo":"0005","cod_zeus":"0005","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"ROOM SERVICES","codigo":"0003","cod_zeus":"0003","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"FOOD AND BEVERAGES","codigo":"0002","cod_zeus":"0002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"TIP","codigo":"0004","cod_zeus":"0004","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"V-COFFE ALIMENTACION Room# 412 : CHECK# 0025292","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"V Coffe","codigo":"GROUP_16","cod_zeus":"GROUP_16","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Transportation","codigo":"GROUP_12","cod_zeus":"GROUP_12","cuenta_puc":"41409522","nombre_cuenta":"TRANSPORTE"},{"producto":"Room Service","codigo":"GROUP_18","cod_zeus":"GROUP_18","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Tarta de Salmon","codigo":"1005|1","cod_zeus":"1005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Natural Juices","codigo":"1002511|1","cod_zeus":"1002511","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Burguer","codigo":"4009|1","cod_zeus":"4009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Coca Cola","codigo":"1002505|1","cod_zeus":"1002505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Agua Botella","codigo":"1002501|1","cod_zeus":"1002501","cuenta_puc":"41409511","nombre_cuenta":"AGUA"},{"producto":"Sopa de Verduras","codigo":"1009|1","cod_zeus":"1009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Club Sandwich","codigo":"43005|1","cod_zeus":"43005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Jugo En Leche","codigo":"1002517|1","cod_zeus":"1002517","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Club Colombia","codigo":"1020007|1","cod_zeus":"1020007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cuarta Generacion","codigo":"7006|1","cod_zeus":"7006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Cuatro Quesos","codigo":"5503|1","cod_zeus":"5503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ginger Ale","codigo":"1002507|1","cod_zeus":"1002507","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Burguer","codigo":"4009|2","cod_zeus":"4009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Papa","codigo":"49008|1","cod_zeus":"49008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Orange Juice","codigo":"1002508|1","cod_zeus":"1002508","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Peperoni","codigo":"5502|1","cod_zeus":"5502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arepa Rellena por 3","codigo":"20010|1","cod_zeus":"20010","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Made Burger","codigo":"41501|1","cod_zeus":"41501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Empanada de Papa por Diez","codigo":"20004|1","cod_zeus":"20004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Jamon Serrano","codigo":"5504|1","cod_zeus":"5504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada Cesar","codigo":"2510|1","cod_zeus":"2510","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich Ropa Vieja","codigo":"23002|1","cod_zeus":"23002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandia","codigo":"1001001|1","cod_zeus":"1001001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Made Burguer","codigo":"21501|1","cod_zeus":"21501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ceviche de Chicharron","codigo":"20008|1","cod_zeus":"20008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Empanada de Papa Por Cinco","codigo":"20003|1","cod_zeus":"20003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Margarita","codigo":"5501|1","cod_zeus":"5501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Nacional X5","codigo":"1025001|1","cod_zeus":"1025001","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Sandwich de Pollo","codigo":"23003|1","cod_zeus":"23003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ravioli Carvonara","codigo":"2501|1","cod_zeus":"2501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Esferas de Salmon","codigo":"1008|1","cod_zeus":"1008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papa Trufada","codigo":"49021|1","cod_zeus":"49021","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Rissotto Frutti di Mare","codigo":"2503|1","cod_zeus":"2503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada de Palta y Naranja","codigo":"49007|1","cod_zeus":"49007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Lasagna a la Bolognesa","codigo":"2506|1","cod_zeus":"2506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Coca Cola Cero","codigo":"1002506|1","cod_zeus":"1002506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Funghi di Casa","codigo":"5506|1","cod_zeus":"5506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papardelle al Telefono","codigo":"2505|1","cod_zeus":"2505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"ADICION POLLO","codigo":"49011|1","cod_zeus":"49011","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada Pechuga de Pollo","codigo":"4008|1","cod_zeus":"4008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Hamburguesa Pollo Crispy","codigo":"41504|1","cod_zeus":"41504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich Roasted Pork","codigo":"43004|1","cod_zeus":"43004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pannacota de Pstacho","codigo":"47501|1","cod_zeus":"47501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Rulade de Pollo","codigo":"46001|1","cod_zeus":"46001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Cuatro Quesos","codigo":"24503|1","cod_zeus":"24503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Agua con gas Botella","codigo":"1002502|1","cod_zeus":"1002502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pannacota de Pistachos","codigo":"7002|1","cod_zeus":"7002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Servicio$","codigo":"4","cod_zeus":"4","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Bruschetta Aguacate","codigo":"26002|1","cod_zeus":"26002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion PAN","codigo":"49012|1","cod_zeus":"49012","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Frutos Rojos","codigo":"1001004|1","cod_zeus":"1001004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papas a la Francesa","codigo":"49020|1","cod_zeus":"49020","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ravioli de Bondioala","codigo":"2508|1","cod_zeus":"2508","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"New York Steak","codigo":"4005|1","cod_zeus":"4005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papas Trufadas","codigo":"1353153|1","cod_zeus":"1353153","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Creme  Brublee","codigo":"7005|1","cod_zeus":"7005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Solomito En Salsa de Vino","codigo":"4004|1","cod_zeus":"4004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Salmon Miel Romero","codigo":"4006|1","cod_zeus":"4006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bretaña","codigo":"1002515|1","cod_zeus":"1002515","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Lemon","codigo":"1002509|1","cod_zeus":"1002509","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Tiramisu Siglo XXI","codigo":"7003|1","cod_zeus":"7003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aromaticas","codigo":"59007|1","cod_zeus":"59007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pollo Napolitano","codigo":"4007|1","cod_zeus":"4007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Solimito Tres Pimientos","codigo":"4002|1","cod_zeus":"4002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Zapallo","codigo":"1353154|1","cod_zeus":"1353154","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Esparragos al Ajillo","codigo":"49004|1","cod_zeus":"49004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Zapallo","codigo":"49005|1","cod_zeus":"49005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arroz Cremoso","codigo":"49010|1","cod_zeus":"49010","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Capriccio italiano","codigo":"1001|1","cod_zeus":"1001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Carpaccio di Manzo","codigo":"1004|1","cod_zeus":"1004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Crema de Tomate","codigo":"1003|1","cod_zeus":"1003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Red Bull","codigo":"1002504|1","cod_zeus":"1002504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Colombiana","codigo":"1002513|1","cod_zeus":"1002513","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Buchannas Shot","codigo":"1050003|1","cod_zeus":"1050003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Buchannas 750","codigo":"1055003|1","cod_zeus":"1055003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Americano","codigo":"59001|1","cod_zeus":"59001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Punta Anca","codigo":"46006|1","cod_zeus":"46006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Burrata al Nido","codigo":"1002|1","cod_zeus":"1002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Peperoni","codigo":"5502|2","cod_zeus":"5502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pechuga Asada","codigo":"4012|1","cod_zeus":"4012","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Papa","codigo":"1353152|1","cod_zeus":"1353152","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Raviolli Margarita","codigo":"2507|1","cod_zeus":"2507","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pilsen x5","codigo":"1025013|1","cod_zeus":"1025013","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"V-Vegetarian Burguer","codigo":"21503|1","cod_zeus":"21503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pasta Primavera","codigo":"46002|1","cod_zeus":"46002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Solomito Entrecot","codigo":"4003|1","cod_zeus":"4003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Carpaccio","codigo":"5507|1","cod_zeus":"5507","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Pepperoni","codigo":"24502|1","cod_zeus":"24502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Corona","codigo":"1020004|1","cod_zeus":"1020004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Adicion Michelado","codigo":"1190001|1","cod_zeus":"1190001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Patacon por Diez","codigo":"20006|1","cod_zeus":"20006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion Tocineta","codigo":"49001|1","cod_zeus":"49001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Capuccino","codigo":"59005|1","cod_zeus":"59005","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Grand Potatoes","codigo":"20007|1","cod_zeus":"20007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Carmenere Dominga","codigo":"1160003|1","cod_zeus":"1160003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Guava And Cheese","codigo":"27502|1","cod_zeus":"27502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Maracuya","codigo":"1001003|1","cod_zeus":"1001003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pechuga Asada","codigo":"4012|2","cod_zeus":"4012","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Crema de Tomate","codigo":"1003|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Natural Juices","codigo":"1002511|2","cod_zeus":"1002511","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cuarta Generacion","codigo":"47504|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Flor de jamaica","codigo":"1001002|1","cod_zeus":"1001002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich de Pollo","codigo":"43003|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Pepperoni","codigo":"44502|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Ropa Vieja","codigo":"24505|1","cod_zeus":"24505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gatorade","codigo":"1002503|1","cod_zeus":"1002503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Medellin Gourmet Ext","codigo":"4017|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Mini Cata De Vino Tinto","codigo":"1160012|1","cod_zeus":"1160012","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Steak de Sandia","codigo":"1007|1","cod_zeus":"1007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"V-Vegetarian Sandwich","codigo":"23001|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Heiniken","codigo":"1020006|1","cod_zeus":"1020006","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Esparragos al Ajillo","codigo":"1353156|1","cod_zeus":"1353156","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"agua","codigo":"43016|1","cod_zeus":"43016","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Coca cola","codigo":"43017|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Grand Burguer","codigo":"41502|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"ADICION POLLO","codigo":"49011|2","cod_zeus":"49011","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papas a la Francesa","codigo":"49020|2","cod_zeus":"49020","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arroz Blanco","codigo":"49009|2","cod_zeus":"49009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aguila Ligth","codigo":"1020002|1","cod_zeus":"1020002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Stella","codigo":"1020005|1","cod_zeus":"1020005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Club Sandwich","codigo":"43005|2","cod_zeus":"43005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada Cesar con Pollo","codigo":"40007|1","cod_zeus":"40007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Fungi di Casa","codigo":"44506|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Tiramisu Siglo XXI","codigo":"47502|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Rissotto Funghi","codigo":"2504|1","cod_zeus":"2504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Patacon Por Cinco","codigo":"20005|1","cod_zeus":"20005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arroz Blanco","codigo":"49009|1","cod_zeus":"49009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sopa de Verduras","codigo":"1009|2","cod_zeus":"1009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Grand Burger","codigo":"21502|1","cod_zeus":"21502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Milo","codigo":"59008|1","cod_zeus":"59008","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Adicion Queso","codigo":"49002|1","cod_zeus":"49002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gnocchis a la Bolognesa","codigo":"2502|1","cod_zeus":"2502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arepa Rellena por 6","codigo":"20011|1","cod_zeus":"20011","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Canada Dry","codigo":"1002514|1","cod_zeus":"1002514","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Picada Antioqueña Para Dos","codigo":"20001|1","cod_zeus":"20001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Soda Hatsu","codigo":"1002516|1","cod_zeus":"1002516","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Manzana","codigo":"1002512|1","cod_zeus":"1002512","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Late","codigo":"59002|1","cod_zeus":"59002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Desayuno americano","codigo":"49016|1","cod_zeus":"49016","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion Aguacate","codigo":"49014|1","cod_zeus":"49014","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Desayuno buffet","codigo":"49017|1","cod_zeus":"49017","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papa Trufada","codigo":"49021|2","cod_zeus":"49021","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich Roasted Pork","codigo":"23004|1","cod_zeus":"23004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pulpo a las Finas Hierbas","codigo":"1006|1","cod_zeus":"1006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Crema de Verduras","codigo":"40004|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Mojito","codigo":"1005001|1","cod_zeus":"1005001","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Sangria vino tinto","codigo":"1160008|1","cod_zeus":"1160008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"limonada de vino blanco","codigo":"1160010|1","cod_zeus":"1160010","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Menu Confesion Comunidad","codigo":"5508|1","cod_zeus":"5508","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Syrah Dominga","codigo":"1160002|1","cod_zeus":"1160002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Margarita","codigo":"1005002|1","cod_zeus":"1005002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Coca Cola","codigo":"1002505|2","cod_zeus":"1002505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Picada Antioqueña Para Cuatro","codigo":"20002|1","cod_zeus":"20002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Express","codigo":"59003|1","cod_zeus":"59003","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Sauvignon Dominga","codigo":"1150004|1","cod_zeus":"1150004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papas Trufadas","codigo":"1353158|1","cod_zeus":"1353158","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Grand Potatoes","codigo":"20007|2","cod_zeus":"20007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aguila Original","codigo":"1020003|1","cod_zeus":"1020003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Baileys shot","codigo":"1050006|1","cod_zeus":"1050006","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Fruta","codigo":"49013|1","cod_zeus":"49013","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arepa Rellena por 6","codigo":"20011|2","cod_zeus":"20011","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pilsen","codigo":"1020001|1","cod_zeus":"1020001","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Grand Burger","codigo":"21502|2","cod_zeus":"21502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Made Burguer","codigo":"21501|2","cod_zeus":"21501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Tamarindo","codigo":"1001005|1","cod_zeus":"1001005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Fungi di Casa","codigo":"24506|2","cod_zeus":"24506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Funghi di Casa","codigo":"5506|2","cod_zeus":"5506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Cuatro Quesos","codigo":"5503|2","cod_zeus":"5503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion de huevo","codigo":"26005|2","cod_zeus":"26005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Chardonay Dominga Btl","codigo":"1155002|1","cod_zeus":"1155002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Old Pard Shot","codigo":"1050004|1","cod_zeus":"1050004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Limonada de vino tinto","codigo":"1160009|1","cod_zeus":"1160009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich Roasted Pork","codigo":"23004|2","cod_zeus":"23004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aperol","codigo":"1005010|1","cod_zeus":"1005010","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Cartagena Gewurztraminer","codigo":"1155009|1","cod_zeus":"1155009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Reserva Ruffino Btl","codigo":"1165004|1","cod_zeus":"1165004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cabernet Dominga btl","codigo":"1165024|1","cod_zeus":"1165024","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Negroni","codigo":"1005003|1","cod_zeus":"1005003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Jarra Sangria V Tinto","codigo":"1165021|1","cod_zeus":"1165021","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Saint Louis","codigo":"1180001|1","cod_zeus":"1180001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Copa Sangria Rosado","codigo":"1170003|1","cod_zeus":"1170003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gin Tonic Bombay","codigo":"1015004|1","cod_zeus":"1015004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Syrah Finca Las Moras","codigo":"1170002|1","cod_zeus":"1170002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Empanada de Papa Por Cinco","codigo":"20003|2","cod_zeus":"20003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Express Doble","codigo":"59004|1","cod_zeus":"59004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Papa","codigo":"1353152|2","cod_zeus":"1353152","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Ropa Vieja","codigo":"24505|2","cod_zeus":"24505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sangria Vino Blanco","codigo":"1150006|1","cod_zeus":"1150006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Salmon Miel Romero","codigo":"4006|2","cod_zeus":"4006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Moscow Mule","codigo":"1005008|1","cod_zeus":"1005008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cabernet Dominga","codigo":"1160007|1","cod_zeus":"1160007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"disaronno shot","codigo":"1105008|1","cod_zeus":"1105008","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Coca Cola Cero","codigo":"1002506|2","cod_zeus":"1002506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Colombinas de pollo","codigo":"20014|2","cod_zeus":"20014","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion PAN","codigo":"49012|2","cod_zeus":"49012","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papardelle al Telefono","codigo":"2505|2","cod_zeus":"2505","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cuba Libre","codigo":"1005007|1","cod_zeus":"1005007","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Jarra sangria Blanco","codigo":"1155005|1","cod_zeus":"1155005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bourbon Shot","codigo":"1050005|1","cod_zeus":"1050005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Adicion Coctel","codigo":"1190002|1","cod_zeus":"1190002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ceviche de Chicharron","codigo":"40002|1","cod_zeus":"40002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Home Burguer","codigo":"4009|1","cod_zeus":"4009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Guilty Pleasure","codigo":"27504|1","cod_zeus":"27504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Carpaccio","codigo":"5507|2","cod_zeus":"5507","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bretaña","codigo":"1002515|2","cod_zeus":"1002515","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Lemon","codigo":"1002509|2","cod_zeus":"1002509","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Burrata al Nido","codigo":"1002|2","cod_zeus":"1002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Lasagna a la Bolognesa","codigo":"2506|2","cod_zeus":"2506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"New York Steak","codigo":"4005|2","cod_zeus":"4005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada de Palta y Naranja","codigo":"49007|2","cod_zeus":"49007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada de Palta y Naranja","codigo":"1353155|2","cod_zeus":"1353155","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Chardonnay Finca Las Moras","codigo":"1150002|1","cod_zeus":"1150002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Camerene Dominga Btl","codigo":"1165007|1","cod_zeus":"1165007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Grey Goose Shot","codigo":"1060004|1","cod_zeus":"1060004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Shot Hendriks","codigo":"1100004|1","cod_zeus":"1100004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Ensalada de Palta y Naranja","codigo":"1353155|1","cod_zeus":"1353155","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Syrah Dominga Btl","codigo":"1165006|1","cod_zeus":"1165006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Fruta","codigo":"49013|2","cod_zeus":"49013","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"T-bone en Gremolata","codigo":"4001|1","cod_zeus":"4001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion Queso","codigo":"49002|2","cod_zeus":"49002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandia Verano","codigo":"1010004|1","cod_zeus":"1010004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Red Bull","codigo":"1002504|2","cod_zeus":"1002504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bue Margarita","codigo":"1005004|1","cod_zeus":"1005004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Moscow Mule 2X1","codigo":"1005015|1","cod_zeus":"1005015","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Pavlova tres  Generaciones","codigo":"7004|1","cod_zeus":"7004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aguardiente Shot","codigo":"1115003|1","cod_zeus":"1115003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Mimosa","codigo":"1005014|1","cod_zeus":"1005014","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Menu Sugerencia del chef","codigo":"49026|1","cod_zeus":"49026","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Wafflegg","codigo":"27501|1","cod_zeus":"27501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"martini espresso","codigo":"1005013|1","cod_zeus":"1005013","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Ceviche de Pez Blanco","codigo":"20009|1","cod_zeus":"20009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Margarita","codigo":"5501|2","cod_zeus":"5501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Macchiato","codigo":"59006|1","cod_zeus":"59006","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Adicion de huevo","codigo":"26005|1","cod_zeus":"26005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gin Tonic Gordons","codigo":"1015002|1","cod_zeus":"1015002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Gin Tonic Tanqueray","codigo":"1015003|1","cod_zeus":"1015003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Pasqua","codigo":"1170004|1","cod_zeus":"1170004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ron Medellin 3 Anios Shot","codigo":"1105001|1","cod_zeus":"1105001","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"TIP 10%","codigo":"3","cod_zeus":"3","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Patacon Por Cinco","codigo":"20005|2","cod_zeus":"20005","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pan Masa Madre Blanco","codigo":"49028|2","cod_zeus":"49028","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pan Masa Madre Cacao","codigo":"49029|2","cod_zeus":"49029","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Old Fashioned","codigo":"1005006|1","cod_zeus":"1005006","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Solimito Tres Pimientos","codigo":"4002|2","cod_zeus":"4002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Absolut Shot","codigo":"1060005|1","cod_zeus":"1060005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Pollo Napolitano","codigo":"4007|2","cod_zeus":"4007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Arepa Rellena por 3","codigo":"20010|2","cod_zeus":"20010","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Don Julio Blanco Shot","codigo":"1070006|1","cod_zeus":"1070006","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Patacon por Diez","codigo":"20006|2","cod_zeus":"20006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Agua Blosson","codigo":"1002518|1","cod_zeus":"1002518","cuenta_puc":"41409511","nombre_cuenta":"AGUA"},{"producto":"Spring Ronrise","codigo":"1010001|1","cod_zeus":"1010001","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Propina %","codigo":"2","cod_zeus":"2","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Ron Viejo de Caldas Shot","codigo":"1105004|1","cod_zeus":"1105004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Affogato","codigo":"59010|1","cod_zeus":"59010","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Chardonay Dominga","codigo":"1150005|1","cod_zeus":"1150005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Chardonay finca las moras btl","codigo":"1155006|1","cod_zeus":"1155006","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Bruschetta de Jamon Serrano","codigo":"26003|1","cod_zeus":"26003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Tostada Francesa","codigo":"27503|1","cod_zeus":"27503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Capuccino","codigo":"59005|2","cod_zeus":"","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Sandwich de Pollo","codigo":"23003|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada de Sandia","codigo":"49006|1","cod_zeus":"49006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Tartar de Salmon","codigo":"5505|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Express","codigo":"59003|2","cod_zeus":"","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Medellin Gourmet guees","codigo":"4013|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gin Tonic Flor de Clitoria","codigo":"1015001|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Mini Cata De Vino Blanco","codigo":"1150007|1","cod_zeus":"1150007","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Pizza Pepperoni","codigo":"44502|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Medellin Gourmet Ext","codigo":"4017|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Mini Cata De Vino Tinto","codigo":"1160012|2","cod_zeus":"1160012","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Mini Cata De Vino Blanco","codigo":"1150007|2","cod_zeus":"1150007","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Suavignon Dominga Btl","codigo":"1155003|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Gin Tonic Hendrinks","codigo":"1015005|1","cod_zeus":"1015005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Old Pard 750","codigo":"1055004|1","cod_zeus":"1055004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Corona zero","codigo":"1020009|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Saint Louis Btl","codigo":"1185001|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Tiramisu Siglo XXI","codigo":"7003|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Syrah Finca Las Moras btl","codigo":"1175004|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sandwich Ropa Vieja","codigo":"23002|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Herradura Plata Shot","codigo":"1070005|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Steak de Sandia","codigo":"1007|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ravioli Carvonara","codigo":"2501|2","cod_zeus":"2501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Agua Botella","codigo":"1002501|2","cod_zeus":"1002501","cuenta_puc":"41409511","nombre_cuenta":"AGUA"},{"producto":"Manzana","codigo":"1002512|2","cod_zeus":"1002512","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Menu Dia De Madres","codigo":"60001|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sangria Vino Rosado","codigo":"1175005|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Menu Confesion Comunidad","codigo":"5508|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aguardiente 750","codigo":"1120002|1","cod_zeus":"1120002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Pizza Pepperoni","codigo":"24502|2","cod_zeus":"24502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Adicion Aguacate","codigo":"49014|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Cuatro Quesos","codigo":"24503|2","cod_zeus":"24503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Empanada de Papa por Diez","codigo":"20004|2","cod_zeus":"20004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Frutos Rojos","codigo":"1001004|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Jugo En Leche","codigo":"1002517|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cuarta Generacion","codigo":"7006|2","cod_zeus":"7006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Maracuya","codigo":"1001003|2","cod_zeus":"1001003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada Pechuga de Pollo","codigo":"4008|2","cod_zeus":"4008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Agua con gas Botella","codigo":"1002502|2","cod_zeus":"1002502","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Servicio%","codigo":"5","cod_zeus":"","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Adicion Guacamole","codigo":"49015|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ceviche de Pez Blanco","codigo":"20009|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ensalada de Sandia","codigo":"1353151|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Colombiana","codigo":"1002513|2","cod_zeus":"1002513","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aromaticas","codigo":"59007|2","cod_zeus":"59007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Solomito En Salsa de Vino","codigo":"4004|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Papas Trufadas","codigo":"1353158|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Esferas de Salmon","codigo":"1008|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Jamon Serrano","codigo":"44504|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pinot Grigio","codigo":"1155007|1","cod_zeus":"1155007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pasqua Btl","codigo":"1175002|1","cod_zeus":"1175002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"V-Grand","codigo":"1260005|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Mezcal Shot","codigo":"1085002|1","cod_zeus":"1085002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Margarita Andina","codigo":"1010002|1","cod_zeus":"1010002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Margarita","codigo":"24501|1","cod_zeus":"24501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pure de Papa","codigo":"49008|2","cod_zeus":"49008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Fungi di Casa","codigo":"24506|1","cod_zeus":"24506","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Fiesta Mezcal","codigo":"1010007|1","cod_zeus":"1010007","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Combo Coworking","codigo":"59009|1","cod_zeus":"59009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Picada Antioqueña Para Dos","codigo":"20001|2","cod_zeus":"20001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pina Colada","codigo":"1005009|1","cod_zeus":"1005009","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Home Made Burger","codigo":"41501|2","cod_zeus":"41501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pannacota de Pistachos","codigo":"7002|2","cod_zeus":"7002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bruschetta Capresa","codigo":"26001|1","cod_zeus":"26001","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Sky Shot","codigo":"1060007|1","cod_zeus":"1060007","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Tequila Limon","codigo":"1010006|1","cod_zeus":"1010006","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Jimador Shot","codigo":"1070007|1","cod_zeus":"1070007","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Colombinas de pollo","codigo":"20014|1","cod_zeus":"20014","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Pizza Jamon Serrano","codigo":"24504|1","cod_zeus":"24504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Importadas X5","codigo":"1025004|1","cod_zeus":"1025004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Aguardiente Media","codigo":"1115004|1","cod_zeus":"1115004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Bruschetta Vegetariana","codigo":"26004|1","cod_zeus":"26004","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ron Hechicera Shot","codigo":"1105003|1","cod_zeus":"1105003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Importadas X10","codigo":"1025005|1","cod_zeus":"1025005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Jose Cuervo Blanco Shot","codigo":"1070003|1","cod_zeus":"1070003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Combo pizza cuatro queso","codigo":"24508|1","cod_zeus":"24508","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Combo Pizza margarita","codigo":"24507|1","cod_zeus":"24507","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Picada Antioqueña Para Cuatro","codigo":"20002|2","cod_zeus":"20002","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ceviche de Chicharron","codigo":"20008|2","cod_zeus":"20008","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bloody Mary","codigo":"1005005|1","cod_zeus":"1005005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"1800 Shot","codigo":"1070004|1","cod_zeus":"1070004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Gordon Berry","codigo":"1010005|1","cod_zeus":"1010005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Wafflegg","codigo":"27501|2","cod_zeus":"27501","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Combo Hamburguesa con cerveza","codigo":"21504|1","cod_zeus":"21504","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Amaretto Ingles","codigo":"1010003|1","cod_zeus":"1010003","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Torta","codigo":"59011|1","cod_zeus":"59011","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Gatorade","codigo":"1002503|2","cod_zeus":"1002503","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Herradura Reposado Shot","codigo":"1070002|1","cod_zeus":"1070002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Americano","codigo":"59001|2","cod_zeus":"59001","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Bourbon Shot","codigo":"1050005|2","cod_zeus":"1050005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Herradura Plata Shot","codigo":"1070005|2","cod_zeus":"1070005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Buchannas Shot","codigo":"1050003|2","cod_zeus":"1050003","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Limonada de vino tinto","codigo":"1160009|2","cod_zeus":"1160009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Herradura Reposado Shot","codigo":"1070002|2","cod_zeus":"1070002","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Combo Coworking","codigo":"59009|2","cod_zeus":"59009","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Aguila Ligth X5","codigo":"1025007|1","cod_zeus":"1025007","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Margarita 2 x1","codigo":"1005016|1","cod_zeus":"1005016","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Aperol 2X1","codigo":"1005017|1","cod_zeus":"1005017","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Affogato","codigo":"59010|2","cod_zeus":"59010","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Long Island Iced","codigo":"1005019|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Malibu Shot","codigo":"1105009|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Mojito 2x1","codigo":"1005018|1","cod_zeus":"1005018","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Club Colombia x5","codigo":"1025010|1","cod_zeus":"","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Jose Cuervo Especial Shot","codigo":"1070001|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Mocktail","codigo":"1001006|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Ron Parce Shot","codigo":"1105005|1","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Adicion Tocineta","codigo":"49001|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Cabernet Finca las Moras","codigo":"1160006|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Descorche","codigo":"1020008|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Corona X10","codigo":"1025005|1","cod_zeus":"1025005","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Torta","codigo":"59011|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Corona X5","codigo":"1025004|1","cod_zeus":"1025004","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Canada Dry","codigo":"1002514|2","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Stella x 5","codigo":"1025019|1","cod_zeus":"","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Club Colombia x10","codigo":"1025011|1","cod_zeus":"","cuenta_puc":"41401503","nombre_cuenta":"CERVEZA"},{"producto":"Churrasco","codigo":"46007|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Montepulciano Btl","codigo":"1175003|1","cod_zeus":"","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Ron Viejo de Caldas Shot","codigo":"1105004|2","cod_zeus":"","cuenta_puc":"41401504","nombre_cuenta":"LICORES, APERITIVOS, VINOS Y SIMILARES"},{"producto":"Paidout","codigo":"GROUP_10","cod_zeus":"GROUP_10","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Miscellaneous v-localRoom# 613 : CHECK# 0060066","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room#611: CHECK# 0060104","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# PH06: CHECK# 0060067","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# PH05: CHECK# 0060107","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"SERVICIO DE PROPINA","codigo":"SERV-99","cod_zeus":"SERV-99","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Miscellaneous v-local Room# 706 : CHECK# 0060050","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 613 : CHECK# 0060041","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 412 : CHECK# 0060093","codigo":"GROUP2","cod_zeus":"","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 406: CHECK#0060108","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 1107: CHECK# 0060090","codigo":"GROUP2","cod_zeus":"","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 1107: CHECK# 0060089","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 1007: CHECK# 0060086","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous v-local Room# 1003: CHECK# 0060111","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Miscellaneous","codigo":"GROUP_13","cod_zeus":"GROUP_13","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Food and Beverages","codigo":"GROUP_2","cod_zeus":"GROUP_2","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Bebida HAB 604","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41402001","nombre_cuenta":"BAR/V-COFEE"},{"producto":"Banquets","codigo":"GROUP_3","cod_zeus":"GROUP_3","cuenta_puc":"41409528","nombre_cuenta":"SERVICIO DE EVENTOS"},{"producto":"Accommodation with breakfast included","codigo":"GROUP_21","cod_zeus":"GROUP_21","cuenta_puc":"41401001","nombre_cuenta":"ALOJAMIENTO GRAVADO 19%"},{"producto":"Test","codigo":"49012|1","cod_zeus":"49012","cuenta_puc":"41401501","nombre_cuenta":"RESTAURANTE"},{"producto":"Room Service Alimentos (Check# 0030771)","codigo":"ROOM_SERVICE","cod_zeus":"ROOM_SERVICE","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Servicio / Propina","codigo":"SERVICIO","cod_zeus":"SERVICIO","cuenta_puc":"28150501","nombre_cuenta":"PROPINAS"},{"producto":"Room Service Alimentos (Check# 0030774)","codigo":"ROOM_SERVICE","cod_zeus":"ROOM_SERVICE","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Room Service Alimentos (Check# 0030791)","codigo":"ROOM_SERVICE","cod_zeus":"ROOM_SERVICE","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Room Service Alimentos (Check# 0030822)","codigo":"ROOM_SERVICE","cod_zeus":"ROOM_SERVICE","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Room service beer (Check# 0030832)","codigo":"ROOM_SERVICE","cod_zeus":"ROOM_SERVICE","cuenta_puc":"41409514","nombre_cuenta":"ROOM SERVICE"},{"producto":"Accommodation","codigo":"GROUP_1","cod_zeus":"GROUP_1","cuenta_puc":"41401001","nombre_cuenta":"ALOJAMIENTO GRAVADO 19%"},{"producto":"cafe madre selva","codigo":"1300045|1","cod_zeus":"1300045","cuenta_puc":"41409560","nombre_cuenta":"MISCELANEOS"},{"producto":"Kit Afeitar","codigo":"1300070|1","cod_zeus":"1300070","cuenta_puc":"41409572","nombre_cuenta":"OTROS"},{"producto":"Kit Dental","codigo":"1300071|1","cod_zeus":"1300071","cuenta_puc":"41409572","nombre_cuenta":"OTROS"},{"producto":"Food and Beverages","codigo":"GROUPi22","cod_zeus":"","cuenta_puc":"41409511","nombre_cuenta":"AGUA"}]
+    });
+    const initPagosSatcomPage = createSatcomGrid({
+      prefix:'cp', table:'satcom_pagos', hasFields:true, sectionId:'pagossatcom',
+      cols:[
+        {k:'codigo_contable', label:'Código Contable'}, {k:'nombre_cta', label:'Nombre CTA', wide:true},
+        {k:'detalle_pago', label:'RCOL4 / Detalle de pago', wide:true}, {k:'codigo_forma_pago', label:'CodigoFormaPago'}],
+      seed: [{"codigo_contable": "11050522", "nombre_cta": "CAJA GENERAL VIAGGIO MEDELLIN", "detalle_pago": "Cash:290000.00"}, {"codigo_contable": "11051501", "nombre_cta": "CAJA MONEDA EXTRANJERA DOLARES", "detalle_pago": "COLUMNA AR / Cash Dolar:2095631.70"}, {"codigo_contable": "11051502", "nombre_cta": "CAJA MONEDA EXTRANJERA EUROS", "detalle_pago": "CAJA MONEDA EXTRANJERA EUROS"}, {"codigo_contable": "13050502", "nombre_cta": "CLIENTES", "detalle_pago": "Direct Bill:-938090.80"}, {"codigo_contable": "28150501", "nombre_cta": "PROPINAS", "detalle_pago": "RCL4 + RCOL8"}, {"codigo_contable": "28900501", "nombre_cta": "INGRESOS RECIBIDOS DE HUESPEDES", "detalle_pago": "American Express:1032550.00"}, {"codigo_contable": "28900501", "nombre_cta": "INGRESOS RECIBIDOS DE HUESPEDES", "detalle_pago": "Deposit Transferred at Check-In:1840662.00"}]
+    });
+
+    const initImpuestosSatcomPage = createSatcomGrid({
+      prefix:'cs2', table:'satcom_impuestos',
+      cols:[{k:'codigo_contable', label:'Código Contable'}, {k:'nombre_cta', label:'Nombre CTA', wide:true}],
+      seed: [{"codigo_contable": "13551502", "nombre_cta": "RETENCION EN LA FUENTE ALOJAM. 3,5"}, {"codigo_contable": "13551702", "nombre_cta": "IVA RETENIDO"}, {"codigo_contable": "13551703", "nombre_cta": "RETENCIONES IVA CON CERTIFICADO"}, {"codigo_contable": "13551803", "nombre_cta": "RETENCION ICA MEDELLIN"}, {"codigo_contable": "24080101", "nombre_cta": "IVA GENERADO 19%"}, {"codigo_contable": "24081007", "nombre_cta": "IVA DESCONTABLE DEV. VENTAS 19%"}, {"codigo_contable": "24950201", "nombre_cta": "IMPUESTO AL CONSUMO"}]
+    });
+
+    const initCentrosSatcomPage = createSatcomGrid({
+      prefix:'cs3', table:'satcom_centros_costo',
+      cols:[{k:'centro_costos', label:'Centro de costos'}, {k:'nombre_centro_costos', label:'Nombre centro de costos', wide:true},
+            {k:'codigo_cc', label:'Codigo CC'}, {k:'software', label:'Software'}],
+      seed: [{"centro_costos": "VGHM", "nombre_centro_costos": "ALOJAMIENTO- OPERA", "codigo_cc": "", "software": "OPERA"}, {"centro_costos": "TG", "nombre_centro_costos": "RESTAURANTE TRES GENERACIONES", "codigo_cc": "", "software": "SIMPHONY"}, {"centro_costos": "VC", "nombre_centro_costos": "V COFFE", "codigo_cc": "", "software": "SIMPHONY"}]
+    });
+
     // ======== NAV / EVENTOS ========
     const menuItems = document.querySelectorAll('.menu-item');
+
+    document.querySelectorAll('.menu-group').forEach(h => h.addEventListener('click', () => {
+      const sub = document.getElementById('menuSub_' + h.dataset.group);
+      const c = sub.classList.toggle('collapsed');
+      h.querySelector('.menu-arrow').textContent = c ? '▸' : '▾';
+    }));
 
     function showSection(id){
       document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden')); // Oculta todo
@@ -1689,6 +2242,11 @@ function buildTercerosRows(rows){
       if (id === 'articulos')        loadArticulosConfig();
       if (id === 'ventas')           initVentasPage();
       if (id === 'contabilizacion')  initContabilizacionPage();
+      if (id === 'contabsatcom')     initContabSatcomPage();
+      if (id === 'cuentassatcom')    initCuentasSatcomPage();
+      if (id === 'pagossatcom')      initPagosSatcomPage();
+      if (id === 'impuestossatcom')  initImpuestosSatcomPage();
+      if (id === 'centrossatcom')    initCentrosSatcomPage();
       if (id === 'inventario')       initInventarioPage();
     }
 
