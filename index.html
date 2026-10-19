@@ -2263,13 +2263,31 @@ function buildTercerosRows(rows){
       return idx;
     }
 
+    // Excel con la estructura de PLANTILLA ZEUS EXCEL (hojas ZDocument_Temp2 y ZTransac_Temp2)
+    const SC_XL_DOC_HEAD = ['Año y Mes','Fuente','Documento','Fecha del Documento','Número de Documento','Total Débitos','Total Créditos','Descripción','Tercero'];
+    const SC_XL_TRX_HEAD = ['Año y Mes','Fuente','Documento','Fecha','Cuenta','Nit','Auxiliar','Centro de Costo','Item','Descripción','Valor','Ind. Tipo de Cuenta','Conciliado','Banco','Vendedor','Plaza','Tipo de Factura','No. Factura','Vencimiento','Referencia','Usuario','Fecha de Grabación','Zona','Cliente/Proveedor','% de Retención','Base de Retención','Código de Presupuesto','Número de la Reserva Presupuestal','Valor en Otra Moneda','Estado','Consecutivo de Reversión','Aplicación','Unidad 1','Unidad 2','Unidad 3','Valor Unid 1','Valor Unid 2','Valor Unid 3','Serie del Proveedor','Autorizacion del Proveedor','Tasa de Cambio','Unidad de Negocio'];
+    function scDownloadExcel(trxRows, docCols, filename){
+      const n = v => (v !== '' && v != null && !isNaN(Number(v))) ? Number(v) : v;
+      const numCols = new Set([10]);                                   // Valor
+      const trx = trxRows.map(r => SC_XL_TRX_HEAD.map((_, i) => numCols.has(i) ? n(r[i]) : (r[i] ?? '')));
+      const doc = [docCols.slice(0, 9).map((v, i) => (i >= 4 && i <= 6) ? n(v) : v)];
+      const wb = XLSX.utils.book_new();
+      const wsD = XLSX.utils.aoa_to_sheet([SC_XL_DOC_HEAD].concat(doc));
+      const wsT = XLSX.utils.aoa_to_sheet([SC_XL_TRX_HEAD].concat(trx));
+      wsD['!cols'] = SC_XL_DOC_HEAD.map(h => ({wch: Math.max(12, h.length + 2)}));
+      wsT['!cols'] = SC_XL_TRX_HEAD.map(h => ({wch: Math.max(12, h.length + 2)}));
+      XLSX.utils.book_append_sheet(wb, wsD, 'ZDocument_Temp2');
+      XLSX.utils.book_append_sheet(wb, wsT, 'ZTransac_Temp2');
+      XLSX.writeFile(wb, filename);
+    }
+
     async function scGenerateContab(){
       const st = document.getElementById('scStatus');
       try {
         const g4 = scGrids.rcol4, g8 = scGrids.rcol8;
         if (!g4 || !g8){ st.textContent = 'Carga primero los archivos RCOL4 y RCOL8.'; return; }
         st.textContent = 'Generando...';
-        const c4 = scColIdx(g4, ['Secuencia','CheckMicros','NIT','FechaEmision','TipoDocumento','Total','IVA','IAC','DescripcionFormaPago','DetallePago','ImporteTotal'], 'RCOL4');
+        const c4 = scColIdx(g4, ['Secuencia','Prefijo','CheckMicros','NIT','FechaEmision','TipoDocumento','Total','IVA','IAC','Propina','DescripcionFormaPago','DetallePago','ImporteTotal'], 'RCOL4');
         const c8 = scColIdx(g8, ['Secuencia','CodigoPunto','Codigo','Subtotal'], 'RCOL8');
 
         // Configuracion (Supabase)
@@ -2298,16 +2316,16 @@ function buildTercerosRows(rows){
           if (!items.has(k)) items.set(k, []); items.get(k).push(r);
         });
 
-        const r2 = x => Math.round(x * 100) / 100;
-        const lines = [], miss = new Set(); let sumPos = 0, sumNeg = 0, firstDate = {ymd:'', ym:''};
-        const add = (inv, cuenta, monto, aux, cc) => {
-          const v = r2(monto);
+        const cents = x => Math.round(x * 100);
+        const lines = [], rowsOut = [], miss = new Set(), warn = [];
+        let sumPos = 0, sumNeg = 0, firstDate = {ymd:'', ym:''};
+        const add = (inv, cuenta, c, aux, cc) => {   // c = monto en centavos (entero)
           const row = TRANSAC_TEMPLATE_COLS.slice();
           row[0] = inv.fecha.ym; row[1] = fuente; row[3] = inv.fecha.ymd; row[4] = cuenta; row[5] = inv.nit;
-          row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(v);
+          row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(c / 100);
           row[16] = 'FC'; row[17] = inv.sec; row[18] = inv.fecha.ymd;
-          if (v > 0) sumPos += v; else if (v < 0) sumNeg += v;
-          lines.push(row.join(';'));
+          if (c > 0) sumPos += c; else if (c < 0) sumNeg += c;
+          rowsOut.push(row); lines.push(row.join(';'));
         };
 
         g4.rows.forEach(r => {
@@ -2318,7 +2336,9 @@ function buildTercerosRows(rows){
           if (!firstDate.ymd) firstDate = inv.fecha;
           const num = k => parseToNumber(r[c4[k]]);
 
-          // Ingresos (RCOL8)
+          // 1) Creditos: ingresos (RCOL8), propina (RCOL4) e impuestos
+          const credits = [];   // [cuenta, centavos, centroCosto]
+          let prop8 = 0;
           (items.get(sec) || []).forEach(it => {
             const cod = String(it[c8.Codigo] ?? '').trim();
             const cuenta = ingMap.get(cod);
@@ -2326,45 +2346,63 @@ function buildTercerosRows(rows){
             const punto = String(it[c8.CodigoPunto] ?? '').trim();
             const cc = ccMap.get(punto);
             if (cc === undefined) miss.add('Centro de costo para punto ' + punto);
-            add(inv, cuenta || '', -1 * sg * parseToNumber(it[c8.Subtotal]), false, cc);
+            const sub = parseToNumber(it[c8.Subtotal]);
+            if (cod === 'SERVICIO1') prop8 += sub;
+            credits.push([cuenta || '', -1 * sg * cents(sub), cc]);
           });
-          // Impuestos
+          // La propina viene en RCOL4; solo se agrega lo que RCOL8 no trae
+          const propExtra = num('Propina') - prop8;
+          if (propExtra > 0.5){
+            const cuenta = ingMap.get('SERVICIO1');
+            if (!cuenta) miss.add('Cuenta de ingreso para codigo SERVICIO1 (propina)');
+            const pref = String(r[c4.Prefijo] ?? '').trim();
+            const cc = ccMap.get(pref);
+            if (cc === undefined) miss.add('Centro de costo para prefijo ' + pref);
+            credits.push([cuenta || '', -1 * sg * cents(propExtra), cc]);
+          }
           [['IVA','IVA'],['IAC','IAC']].forEach(([cod, col]) => {
             const monto = num(col); if (!monto) return;
             const cuenta = impMap.get(cod);
             if (!cuenta) miss.add('Cuenta de impuesto ' + cod);
-            add(inv, cuenta || '', -1 * sg * monto, false);
+            credits.push([cuenta || '', -1 * sg * cents(monto), '']);
           });
-          // Cliente (Total)
-          add(inv, ctaContado, sg * num('Total'), true);
-          // Pagos
+          credits.forEach(([cta, c, cc]) => add(inv, cta, c, false, cc));
+
+          // 2) Debito al cliente = suma de los creditos (el asiento siempre cuadra)
+          const D = -credits.reduce((acc, x) => acc + x[1], 0);
+          const ref = [num('Total'), num('ImporteTotal')].map(x => sg * cents(x));
+          if (!ref.some(x => Math.abs(x - D) <= 100)) warn.push(sec);   // difiere de Total/ImporteTotal en mas de $1
+          add(inv, ctaContado, D, true);
+
+          // 3) Pagos
           const detalle = String(r[c4.DetallePago] ?? '').trim();
           if (/^direct bill/i.test(detalle)){
             const m = detalle.match(/^direct bill\s*:\s*([^|]*)/i);
-            const db = sg * parseToNumber(m ? m[1] : '');
+            const db = sg * cents(parseToNumber(m ? m[1] : ''));
             add(inv, ctaClientes, db, true);
             let sum = db;
             String(r[c4.DescripcionFormaPago] ?? '').split('|').filter(x => x.trim()).forEach(pg => {
-              const amt = -1 * sg * parseToNumber(pg.slice(pg.lastIndexOf(':') + 1));
+              const amt = -1 * sg * cents(parseToNumber(pg.slice(pg.lastIndexOf(':') + 1)));
               add(inv, ctaContado, amt, true); sum += amt;
             });
             add(inv, cta28, -1 * sum, true);
           } else {
-            const it = sg * num('ImporteTotal');
-            add(inv, ctaContado, it, true);
-            add(inv, ctaContado, -1 * it, true);
-            add(inv, cta28, it, true);
+            add(inv, ctaContado, -1 * D, true);
+            add(inv, cta28, D, true);
           }
         });
 
         if (!lines.length){ st.textContent = 'No hay filas para generar.'; return; }
-        const ts = new Date().toISOString().replace('Z','').replace(/:/g,'').replace('T','T');
-        const doc = [firstDate.ym, fuente, '00NUEVO', firstDate.ymd, String(lines.length), String(r2(sumPos)), String(r2(sumNeg)),
-                     'Contabilizacion Opera', '123456789', fuente].join(';') + '\n';
+        const ts = new Date().toISOString().replace('Z','').replace(/:/g,'');
+        const docCols = [firstDate.ym, fuente, '00NUEVO', firstDate.ymd, String(lines.length), String(sumPos / 100), String(sumNeg / 100),
+                         'Contabilizacion Opera', '123456789', fuente];
         downloadText('Transac_Temp_Zeus - ' + ts + '.txt', lines.join('\n') + '\n');
-        downloadText('Document_Temp_Zeus - ' + ts + '.txt', doc);
-        st.textContent = 'Archivos generados: ' + lines.length + ' fila(s) en Transac_Temp_Zeus y Document_Temp_Zeus.' +
-          (miss.size ? ' Sin mapeo: ' + [...miss].slice(0, 5).join('; ') + (miss.size > 5 ? ' (+' + (miss.size - 5) + ' mas)' : '') : '');
+        downloadText('Document_Temp_Zeus - ' + ts + '.txt', docCols.join(';') + '\n');
+        scDownloadExcel(rowsOut, docCols, 'Transac_Zeus - ' + ts + '.xlsx');
+        st.textContent = 'Archivos generados: ' + lines.length + ' fila(s) (Transac, Document y Excel). Debitos ' + (sumPos/100).toLocaleString('es-CO') +
+          ' / Creditos ' + (sumNeg/100).toLocaleString('es-CO') + (sumPos + sumNeg === 0 ? ' (cuadrado)' : ' (DESCUADRADO ' + ((sumPos + sumNeg)/100) + ')') +
+          (warn.length ? ' · Total/ImporteTotal no coincide con RCOL8 en: ' + warn.slice(0, 5).join(', ') + (warn.length > 5 ? ' (+' + (warn.length - 5) + ' mas)' : '') : '') +
+          (miss.size ? ' · Sin mapeo: ' + [...miss].slice(0, 5).join('; ') + (miss.size > 5 ? ' (+' + (miss.size - 5) + ' mas)' : '') : '');
       } catch (e){
         console.error(e); st.textContent = 'Error: ' + e.message;
       }
