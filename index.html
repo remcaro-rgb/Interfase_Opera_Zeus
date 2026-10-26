@@ -1243,7 +1243,8 @@ function renderContabTable(rows){
           if (!rows.length){ if (st) st.textContent = 'No hay filas con Tipo_Documento_Cliente.'; return; }
           const content = rows.map(r => r.join(';')).join('\n');
           downloadText('Terceros_Zeus.txt', content);
-          if (st) st.textContent = 'Generado Terceros_Zeus.txt ('+rows.length+' fila(s))';
+          downloadTercerosExcel(rows, 'Terceros_Zeus.xlsx');
+          if (st) st.textContent = 'Generado Terceros_Zeus.txt y .xlsx ('+rows.length+' fila(s))';
         });
         genTerBtn._bound = true;
       }
@@ -1680,6 +1681,17 @@ function toISO2Country(name){
 // Limpia ; y trim
 function safeField(v){ return (v||'').toString().trim().replace(/;/g,' '); }
 
+// Excel de terceros con la estructura de "Plantilla de terceros.xlsx" (hoja de datos ZTerceros1, encabezado en fila 1)
+const TERCEROS_XL_HEAD = ['IDTERCERO','NOMBRETER','DIGIVERIF','TIPOTERCE','SEGMENTO','TIPOEMPRESA','DIRECCION','CIUDAD','DIVPOLITICA','CODIGODANE','Telefono','TipoIdentificacion','Nombre1','Nombre2','Apellido1','Apellido2','TIPORAZONSOCIAL','SEXO','PROFESION','FECHANACIMIENTO','HOBBIES','NOMBRECONYUGUE','FECHANACIMIENTOCONYUGUE','ESTRATOSOCIAL','BARRIO','TELEFONO2','CELULAR','PAIS'];
+function downloadTercerosExcel(rows, filename){
+  const data = [TERCEROS_XL_HEAD].concat(rows.map(r => TERCEROS_XL_HEAD.map((_, i) => String(r[i] ?? ''))));
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = TERCEROS_XL_HEAD.map(h => ({wch: Math.max(14, h.length + 2)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ZTerceros1');
+  XLSX.writeFile(wb, filename);
+}
+
 // ✅ Construye filas para Terceros_Zeus.txt **sin duplicados**
 //   - Filtra filas con Tipo_Documento_Cliente no vacío
 //   - Duplicado = mismo (ID_Cliente, Nombre_Cliente) tras trim/lower
@@ -2016,7 +2028,8 @@ function buildTercerosRows(rows){
         const rows = buildTercerosRows([...merged.values()]);
         if (!rows.length){ st.textContent = 'No hay filas válidas.'; return; }
         downloadText('Terceros_Zeus.txt', rows.map(r => r.join(';')).join('\n'));
-        st.textContent = 'Generado Terceros_Zeus.txt (' + rows.length + ' fila(s))';
+        downloadTercerosExcel(rows, 'Terceros_Zeus.xlsx');
+        st.textContent = 'Generado Terceros_Zeus.txt y .xlsx (' + rows.length + ' fila(s))';
       });
       btn._bound = true;
     }
@@ -2324,6 +2337,7 @@ function buildTercerosRows(rows){
           row[0] = inv.fecha.ym; row[1] = fuente; row[3] = inv.fecha.ymd; row[4] = cuenta; row[5] = inv.nit;
           row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(c / 100);
           row[16] = 'FC'; row[17] = inv.sec; row[18] = inv.fecha.ymd;
+          row[row.length - 1] = '14';   // Unidad de Negocio
           if (c > 0) sumPos += c; else if (c < 0) sumNeg += c;
           rowsOut.push(row); lines.push(row.join(';'));
         };
