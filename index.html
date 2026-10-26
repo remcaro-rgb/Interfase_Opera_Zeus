@@ -2283,12 +2283,13 @@ function buildTercerosRows(rows){
     const SC_XL_TRX_HEAD = ['Año y Mes','Fuente','Documento','Fecha','Cuenta','Nit','Auxiliar','Centro de Costo','Item','Descripción','Valor','Ind. Tipo de Cuenta','Conciliado','Banco','Vendedor','Plaza','Tipo de Factura','No. Factura','Vencimiento','Referencia','Usuario','Fecha de Grabación','Zona','Cliente/Proveedor','% de Retención','Base de Retención','Código de Presupuesto','Número de la Reserva Presupuestal','Valor en Otra Moneda','Estado','Consecutivo de Reversión','Aplicación','Unidad 1','Unidad 2','Unidad 3','Valor Unid 1','Valor Unid 2','Valor Unid 3','Serie del Proveedor','Autorizacion del Proveedor','Tasa de Cambio','Unidad de Negocio'];
     function scDownloadExcel(trxRows, docCols, filename){
       const n = v => (v !== '' && v != null && !isNaN(Number(v))) ? Number(v) : v;
-      const numCols = new Set([10]);                                   // Valor
+      const numCols = new Set([10, 24]);                               // Valor, % de Retencion
       const trx = trxRows.map(r => SC_XL_TRX_HEAD.map((_, i) => numCols.has(i) ? n(r[i]) : (r[i] ?? '')));
       const doc = [docCols.slice(0, 9).map((v, i) => (i >= 4 && i <= 6) ? n(v) : v)];
       const wb = XLSX.utils.book_new();
       const wsD = XLSX.utils.aoa_to_sheet([SC_XL_DOC_HEAD].concat(doc));
       const wsT = XLSX.utils.aoa_to_sheet([SC_XL_TRX_HEAD].concat(trx));
+      for (let i = 1; i <= trx.length; i++){ const c = wsT[XLSX.utils.encode_cell({r: i, c: 24})]; if (c && c.t === 'n') c.z = '0.00'; }
       wsD['!cols'] = SC_XL_DOC_HEAD.map(h => ({wch: Math.max(12, h.length + 2)}));
       wsT['!cols'] = SC_XL_TRX_HEAD.map(h => ({wch: Math.max(12, h.length + 2)}));
       XLSX.utils.book_append_sheet(wb, wsD, 'ZDocument_Temp2');
@@ -2340,6 +2341,7 @@ function buildTercerosRows(rows){
           row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(c / 100);
           row[16] = 'FC'; row[17] = inv.sec; row[18] = inv.fecha.ymd;
           row[row.length - 1] = '14';   // Unidad de Negocio
+          if (!row[24]) row[24] = '0.00';   // % de Retencion
           if (c > 0) sumPos += c; else if (c < 0) sumNeg += c;
           rowsOut.push(row); lines.push(row.join(';'));
         };
