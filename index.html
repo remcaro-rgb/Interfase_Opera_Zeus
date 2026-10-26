@@ -1684,7 +1684,9 @@ function safeField(v){ return (v||'').toString().trim().replace(/;/g,' '); }
 // Excel de terceros con la estructura de "Plantilla de terceros.xlsx" (hoja de datos ZTerceros1, encabezado en fila 1)
 const TERCEROS_XL_HEAD = ['IDTERCERO','NOMBRETER','DIGIVERIF','TIPOTERCE','SEGMENTO','TIPOEMPRESA','DIRECCION','CIUDAD','DIVPOLITICA','CODIGODANE','Telefono','TipoIdentificacion','Nombre1','Nombre2','Apellido1','Apellido2','TIPORAZONSOCIAL','SEXO','PROFESION','FECHANACIMIENTO','HOBBIES','NOMBRECONYUGUE','FECHANACIMIENTOCONYUGUE','ESTRATOSOCIAL','BARRIO','TELEFONO2','CELULAR','PAIS'];
 function downloadTercerosExcel(rows, filename){
-  const data = [TERCEROS_XL_HEAD].concat(rows.map(r => TERCEROS_XL_HEAD.map((_, i) => String(r[i] ?? ''))));
+  // Reubicacion para el Excel: nombre -> Nombre1, literal final -> TIPORAZONSOCIAL, codigo de pais (CELULAR) -> PAIS
+  const mapped = rows.map(r => { const o = r.slice(); o[12] = r[16]; o[16] = r[27]; o[27] = r[26]; o[26] = ''; return o; });
+  const data = [TERCEROS_XL_HEAD].concat(mapped.map(r => TERCEROS_XL_HEAD.map((_, i) => String(r[i] ?? ''))));
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = TERCEROS_XL_HEAD.map(h => ({wch: Math.max(14, h.length + 2)}));
   const wb = XLSX.utils.book_new();
