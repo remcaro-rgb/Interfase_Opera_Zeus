@@ -2337,7 +2337,7 @@ function buildTercerosRows(rows){
         let sumPos = 0, sumNeg = 0, firstDate = {ymd:'', ym:''};
         const add = (inv, cuenta, c, aux, cc) => {   // c = monto en centavos (entero)
           const row = TRANSAC_TEMPLATE_COLS.slice();
-          row[0] = inv.fecha.ym; row[1] = fuente; row[3] = inv.fecha.ymd; row[4] = cuenta; row[5] = inv.nit;
+          row[0] = inv.fecha.ym; row[1] = fuente; row[3] = inv.fecha.ymd; row[4] = cuenta; row[5] = (cuenta && cuenta === cta28) ? '890300279' : inv.nit;   // Cuenta 28 Clientes -> tercero fijo
           row[6] = aux ? inv.aux : ''; row[7] = cc || ''; row[9] = inv.sec; row[10] = String(c / 100);
           row[16] = 'FC'; row[17] = inv.sec; row[18] = inv.fecha.ymd;
           row[row.length - 1] = '14';   // Unidad de Negocio
