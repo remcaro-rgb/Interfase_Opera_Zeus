@@ -1867,7 +1867,10 @@ function buildTercerosRows(rows){
 
     // Detecta la fila de encabezado: la primera fila (de las 30 primeras) con casi el máximo de celdas con texto
     function scParseSheet(ws){
-      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:'', blankrows:false});
+      const full = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:'', blankrows:true});
+      const r0 = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r : 0;
+      const nums = [], aoa = [];
+      full.forEach((row, i) => { if (row.some(c => String(c).trim() !== '')){ nums.push(r0 + i + 1); aoa.push(row); } });
       const lim = Math.min(aoa.length, 30);
       const cnt = i => aoa[i].reduce((n,c) => n + (String(c).trim() !== '' ? 1 : 0), 0);
       let max = 0; for (let i=0;i<lim;i++) max = Math.max(max, cnt(i));
@@ -1884,10 +1887,10 @@ function buildTercerosRows(rows){
         while (used.has(k)) k = n + ' (' + (j++) + ')';
         used.add(k); idx.push(i); cols.push(k);
       });
-      return {cols, rows: rows.map(r => idx.map(i => r[i] ?? ''))};
+      return {cols, rows: rows.map(r => idx.map(i => r[i] ?? '')), rowNums: nums.slice(h+1)};
     }
 
-    function scCreateGrid(key, label, cols, rows){
+    function scCreateGrid(key, label, cols, rows, rowNums){
       const old = scGrids[key];
       let tabBtn = document.getElementById('scTab_' + key), panel = document.getElementById('scPanel_' + key);
       if (!tabBtn){
@@ -1910,7 +1913,7 @@ function buildTercerosRows(rows){
           '<button type="button" class="sc-next">›</button><button type="button" class="sc-last">»</button>' +
         '</div>' +
         '<div class="sc-wrap"><table><thead></thead><tbody></tbody></table></div>';
-      const g = {cols, rows, lower: null, filters: cols.map(() => ''), search:'', sortCol:-1, sortDir:1, page:0, size:50, view:[], panel};
+      const g = {cols, rows, rowNums: rowNums || [], lower: null, filters: cols.map(() => ''), search:'', sortCol:-1, sortDir:1, page:0, size:50, view:[], panel};
       scGrids[key] = g;
       const q = s => panel.querySelector(s);
       const thead = q('thead');
@@ -2048,8 +2051,8 @@ function buildTercerosRows(rows){
             info.textContent = 'Leyendo ' + file.name + '... (puede tardar con archivos grandes)';
             await new Promise(r => setTimeout(r, 30));
             const wb = XLSX.read(await file.arrayBuffer(), {type:'array', cellDates:false});
-            const {cols, rows} = scParseSheet(wb.Sheets[wb.SheetNames[0]]);
-            scCreateGrid(f.key, f.label, cols, rows);
+            const {cols, rows, rowNums} = scParseSheet(wb.Sheets[wb.SheetNames[0]]);
+            scCreateGrid(f.key, f.label, cols, rows, rowNums);
             info.textContent = file.name + ' · hoja "' + wb.SheetNames[0] + '" · ' + rows.length.toLocaleString('es-CO') + ' filas, ' + cols.length + ' columnas';
           } catch (err) {
             console.error(err); info.textContent = 'Error al leer ' + file.name + ': ' + err.message;
@@ -2304,7 +2307,7 @@ function buildTercerosRows(rows){
         if (!g4 || !g8){ st.textContent = 'Carga primero los archivos RCOL4 y RCOL8.'; return; }
         st.textContent = 'Generando...';
         const c4 = scColIdx(g4, ['Secuencia','Prefijo','CheckMicros','NIT','FechaEmision','TipoDocumento','Total','IVA','IAC','Propina','DescripcionFormaPago','DetallePago','ImporteTotal'], 'RCOL4');
-        const c8 = scColIdx(g8, ['Secuencia','CodigoPunto','Codigo','Subtotal'], 'RCOL8');
+        const c8 = scColIdx(g8, ['Secuencia','CodigoPunto','Codigo','Producto','Subtotal'], 'RCOL8');
 
         // Configuracion (Supabase)
         let fuente = '';
@@ -2324,6 +2327,21 @@ function buildTercerosRows(rows){
         const ingMap = new Map(ingreso.rows.map(r => [String(r.codigo||'').trim(), String(r.cuenta_puc||'').trim()]));
         const ccMap  = new Map(centros.rows.map(r => [String(r.centro_costos||'').trim(), String(r.codigo_cc||'').trim()]));
         const impMap = new Map(impuestos.rows.map(r => [String(r.codigo_impuesto||'').trim().toUpperCase(), String(r.codigo_contable||'').trim()]));
+
+        // Validacion: cargos de RCOL8 sin cuenta contable en Configuracion de Cuentas de Ingreso
+        const sinCuenta = [];
+        g8.rows.forEach((r, i) => {
+          const cod = String(r[c8.Codigo] ?? '').trim();
+          if (ingMap.get(cod)) return;
+          const prod = c8.Producto !== undefined ? String(r[c8.Producto] ?? '').trim() : '';
+          sinCuenta.push((cod || '(vacio)') + ' - ' + prod + ' (fila ' + (g8.rowNums[i] || i + 2) + ')');
+        });
+        if (sinCuenta.length){
+          const msg = 'Los siguientes cargos no tiene cuenta contable asignada: ' + sinCuenta.join('; ') + '.';
+          st.textContent = msg;
+          alert('Los siguientes cargos no tiene cuenta contable asignada:\n\n' + sinCuenta.slice(0, 40).join('\n') + (sinCuenta.length > 40 ? '\n... y ' + (sinCuenta.length - 40) + ' mas' : ''));
+          return;
+        }
 
         // RCOL8 agrupado por Secuencia
         const items = new Map();
