@@ -6,7 +6,7 @@
   <title>Interfaz Opera - Zeus</title>
   <style>
     body {margin: 0; font-family: Arial, sans-serif; background-color: #0f172a; color: #e5e7eb; display: flex;}
-    .sidebar {width: 260px; background-color: #111827; border-right: 1px solid #1f2937; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding-top: 24px;}
+    .sidebar {box-sizing: border-box; overflow-y: auto; width: 260px; background-color: #111827; border-right: 1px solid #1f2937; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; padding-top: 24px;}
     .sidebar h2 {color: #22c55e; font-size: 18px; margin: 0 0 20px 20px;}
     .menu-item {padding: 12px 20px; color: #94a3b8; text-decoration: none; display: block; transition: background 0.2s; cursor: pointer;}
     .menu-group {padding: 14px 20px 8px; color: #e5e7eb; font-size: 20px; font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;}
@@ -14,6 +14,7 @@
     .menu-arrow {display: inline-block; width: 14px; font-size: 16px; color: #22c55e;}
     .menu-sub.collapsed {display: none;}
     .menu-sub .menu-item {font-size: 15px; padding-left: 36px;}
+    .app-version {margin-top: auto; padding: 10px 20px; font-size: 11px; color: #64748b;}
     .menu-item:hover, .menu-item.active {background-color: #1e293b; color: #22c55e;}
     .content {margin-left: 260px; padding: 20px; width: calc(100% - 260px);}    
     .card {background: #111827; padding: 20px; border-radius: 10px; border: 1px solid #1f2937; margin-bottom: 20px;}
@@ -73,10 +74,11 @@
       <div class="menu-item" data-section="impuestossatcom">Configuracion de Impuestos - SATCOM</div>
       <div class="menu-item" data-section="centrossatcom">Configuracion de Centros de Costo - SATCOM</div>
     </div>
+    <div class="app-version" id="appVersion"></div>
   </div>
 
   <div class="content">
-    <h1>Interfaz Opera - Satcom -  Zeus v2.0b </h1>
+    <h1>Interfaz Opera - Satcom -  Zeus <span id="appVersionTitle"></span></h1>
 
     <!-- Configuración General -->
 <section id="configgeneral" class="card hidden">
@@ -401,6 +403,14 @@
   //     updated_at timestamptz,
   //     rows jsonb
   //   );
+
+  // Version de la app: incrementar en cada push
+  const APP_VERSION = 'v2.0.1';
+  document.addEventListener('DOMContentLoaded', () => {
+    const a = document.getElementById('appVersion'), b = document.getElementById('appVersionTitle');
+    if (a) a.textContent = APP_VERSION;
+    if (b) b.textContent = APP_VERSION;
+  });
 
   let supa = null;
   // === HARDCODED SUPABASE CREDENTIALS ===
@@ -2287,7 +2297,7 @@ function buildTercerosRows(rows){
     function scDownloadExcel(trxRows, docRows, filename){
       const n = v => (v !== '' && v != null && !isNaN(Number(v))) ? Number(v) : v;
       const numCols = new Set([10, 24]);                               // Valor, % de Retencion
-      const trx = trxRows.map(r => SC_XL_TRX_HEAD.map((_, i) => numCols.has(i) ? n(r[i]) : (r[i] ?? '')));
+      const trx = trxRows.map(r => { const c = r.slice(); c[23] = c[5]; return SC_XL_TRX_HEAD.map((_, i) => numCols.has(i) ? n(c[i]) : (c[i] ?? '')); });   // Cliente/Proveedor = Nit
       const doc = docRows.map(d => d.slice(0, 9).map((v, i) => (i >= 4 && i <= 6) ? n(v) : v));
       const wb = XLSX.utils.book_new();
       const wsD = XLSX.utils.aoa_to_sheet([SC_XL_DOC_HEAD].concat(doc));
