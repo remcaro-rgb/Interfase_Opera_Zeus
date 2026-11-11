@@ -2284,11 +2284,11 @@ function buildTercerosRows(rows){
     // Excel con la estructura de PLANTILLA ZEUS EXCEL (hojas ZDocument_Temp2 y ZTransac_Temp2)
     const SC_XL_DOC_HEAD = ['Año y Mes','Fuente','Documento','Fecha del Documento','Número de Documento','Total Débitos','Total Créditos','Descripción','Tercero'];
     const SC_XL_TRX_HEAD = ['Año y Mes','Fuente','Documento','Fecha','Cuenta','Nit','Auxiliar','Centro de Costo','Item','Descripción','Valor','Ind. Tipo de Cuenta','Conciliado','Banco','Vendedor','Plaza','Tipo de Factura','No. Factura','Vencimiento','Referencia','Usuario','Fecha de Grabación','Zona','Cliente/Proveedor','% de Retención','Base de Retención','Código de Presupuesto','Número de la Reserva Presupuestal','Valor en Otra Moneda','Estado','Consecutivo de Reversión','Aplicación','Unidad 1','Unidad 2','Unidad 3','Valor Unid 1','Valor Unid 2','Valor Unid 3','Serie del Proveedor','Autorizacion del Proveedor','Tasa de Cambio','Unidad de Negocio'];
-    function scDownloadExcel(trxRows, docCols, filename){
+    function scDownloadExcel(trxRows, docRows, filename){
       const n = v => (v !== '' && v != null && !isNaN(Number(v))) ? Number(v) : v;
       const numCols = new Set([10, 24]);                               // Valor, % de Retencion
       const trx = trxRows.map(r => SC_XL_TRX_HEAD.map((_, i) => numCols.has(i) ? n(r[i]) : (r[i] ?? '')));
-      const doc = [docCols.slice(0, 9).map((v, i) => (i >= 4 && i <= 6) ? n(v) : v)];
+      const doc = docRows.map(d => d.slice(0, 9).map((v, i) => (i >= 4 && i <= 6) ? n(v) : v));
       const wb = XLSX.utils.book_new();
       const wsD = XLSX.utils.aoa_to_sheet([SC_XL_DOC_HEAD].concat(doc));
       const wsT = XLSX.utils.aoa_to_sheet([SC_XL_TRX_HEAD].concat(trx));
@@ -2351,7 +2351,7 @@ function buildTercerosRows(rows){
         });
 
         const cents = x => Math.round(x * 100);
-        const lines = [], rowsOut = [], miss = new Set(), warn = [];
+        const lines = [], rowsOut = [], rowDays = [], miss = new Set(), warn = [];
         let sumPos = 0, sumNeg = 0, firstDate = {ymd:'', ym:''};
         const add = (inv, cuenta, c, aux, cc) => {   // c = monto en centavos (entero)
           const row = TRANSAC_TEMPLATE_COLS.slice();
@@ -2361,7 +2361,7 @@ function buildTercerosRows(rows){
           row[row.length - 1] = '14';   // Unidad de Negocio
           if (!row[24]) row[24] = '0.00';   // % de Retencion
           if (c > 0) sumPos += c; else if (c < 0) sumNeg += c;
-          rowsOut.push(row); lines.push(row.join(';'));
+          rowsOut.push(row); rowDays.push(inv.fecha.ymd); lines.push(row.join(';'));
         };
 
         g4.rows.forEach(r => {
@@ -2432,9 +2432,27 @@ function buildTercerosRows(rows){
         const ts = new Date().toISOString().replace('Z','').replace(/:/g,'');
         const docCols = [firstDate.ym, fuente, '00NUEVO', firstDate.ymd, String(lines.length), String(sumPos / 100), String(sumNeg / 100),
                          'Contabilizacion Opera', '123456789', fuente];
+        // Excel: un documento por dia cuando los archivos traen mas de una fecha
+        let xlRows = rowsOut, xlDocs = [docCols];
+        const days = [...new Set(rowDays)].filter(Boolean).sort();
+        if (days.length > 1){
+          const defNum = days[0].slice(5, 7) + '00000001';
+          const ans = prompt('Los archivos contienen ' + days.length + ' dias (' + days[0] + ' a ' + days[days.length - 1] +
+            ').\nSe generara un documento por dia.\n\nIngrese el numero de documento inicial:', defNum);
+          if (ans === null){ st.textContent = 'Generacion cancelada.'; return; }
+          const start = ans.trim();
+          if (!/^\d{1,15}$/.test(start)){ st.textContent = 'Numero de documento inicial invalido: ' + ans; return; }
+          const docOf = new Map(days.map((d, i) => [d, String(Number(start) + i).padStart(start.length, '0')]));
+          xlRows = rowsOut.map((r, i) => { const c = r.slice(); c[2] = docOf.get(rowDays[i]) || c[2]; return c; });
+          xlDocs = days.map(d => {
+            let deb = 0, cre = 0, ym = '';
+            rowsOut.forEach((r, i) => { if (rowDays[i] !== d) return; ym = r[0]; const v = Math.round(parseFloat(r[10]) * 100); if (v > 0) deb += v; else cre += -v; });
+            return [ym, fuente, docOf.get(d), d, '0', String(deb / 100), String(cre / 100), 'Contabilizacion Ingreso Opera', '901166587'];
+          });
+        }
         downloadText('Transac_Temp_Zeus - ' + ts + '.txt', lines.join('\n') + '\n');
         downloadText('Document_Temp_Zeus - ' + ts + '.txt', docCols.join(';') + '\n');
-        scDownloadExcel(rowsOut, docCols, 'Transac_Zeus - ' + ts + '.xlsx');
+        scDownloadExcel(xlRows, xlDocs, 'Transac_Zeus - ' + ts + '.xlsx');
         st.textContent = 'Archivos generados: ' + lines.length + ' fila(s) (Transac, Document y Excel). Debitos ' + (sumPos/100).toLocaleString('es-CO') +
           ' / Creditos ' + (sumNeg/100).toLocaleString('es-CO') + (sumPos + sumNeg === 0 ? ' (cuadrado)' : ' (DESCUADRADO ' + ((sumPos + sumNeg)/100) + ')') +
           (warn.length ? ' · Total/ImporteTotal no coincide con RCOL8 en: ' + warn.slice(0, 5).join(', ') + (warn.length > 5 ? ' (+' + (warn.length - 5) + ' mas)' : '') : '') +
